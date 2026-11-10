@@ -1,0 +1,2680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ROFI · Analisador</title>
+<style>
+:root{
+  color-scheme: light;
+  --page:#f6f6f3; --surface:#fcfcfb; --surface-2:#f0efec; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10); --hover:rgba(11,11,11,.04);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300; --s7:#6250d6; --s8:#e34948;
+  --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --good-ink:#006300;
+  --accent:#ee4d2d; --neutral:#a9a8a1;
+  --radius:10px; --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --surface-2:#242422; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10); --hover:rgba(255,255,255,.05);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --good-ink:#0ca30c; --neutral:#5d5c57;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --surface-2:#242422; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10); --hover:rgba(255,255,255,.05);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --good-ink:#0ca30c; --neutral:#5d5c57;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--s1)}
+.wrap{max-width:1440px;margin:0 auto;padding:0 20px 60px}
+header.top{position:sticky;top:0;z-index:30;background:var(--page);border-bottom:1px solid var(--grid)}
+.topbar{display:flex;align-items:center;gap:14px;padding:12px 20px;max-width:1440px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:10px;font-weight:650;font-size:16px;letter-spacing:-.01em}
+.brand .dot{width:12px;height:12px;border-radius:3px;background:var(--accent)}
+.brand small{font-weight:500;color:var(--muted);font-size:13px}
+.fileinfo{margin-left:auto;color:var(--ink-2);font-size:13px;display:flex;gap:10px;align-items:center}
+.btn{border:1px solid var(--ring);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.btn.small{padding:3px 9px;font-size:12px}
+.btn:disabled{opacity:.5;cursor:default}
+nav.tabs{display:flex;gap:2px;padding:0 20px;max-width:1440px;margin:0 auto;overflow-x:auto}
+nav.tabs a{padding:9px 12px;color:var(--ink-2);text-decoration:none;border-bottom:2px solid transparent;white-space:nowrap;font-size:13.5px}
+nav.tabs a:hover{color:var(--ink)}
+nav.tabs a.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+nav.tabs a .count{display:inline-block;margin-left:6px;background:var(--surface-2);border-radius:10px;padding:0 7px;font-size:11.5px;color:var(--ink-2)}
+.filters{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;padding:12px 0;border-bottom:1px solid var(--grid);margin-bottom:18px}
+.fgroup{display:flex;align-items:center;gap:6px}
+.fgroup > label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.seg{display:inline-flex;border:1px solid var(--ring);border-radius:8px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:5px 10px;cursor:pointer;font-size:13px}
+.seg button+button{border-left:1px solid var(--ring)}
+.seg button.on{background:var(--ink);color:var(--surface)}
+.chip{border:1px solid var(--ring);background:var(--surface);border-radius:20px;padding:3px 10px;cursor:pointer;font-size:12.5px}
+.chip.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+input[type=date],select,input[type=text],input[type=number],input[type=search]{border:1px solid var(--ring);background:var(--surface);border-radius:8px;padding:5px 8px;font-size:13px}
+input[type=number]{width:72px}
+.check{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);cursor:pointer}
+h2{font-size:18px;margin:6px 0 4px;letter-spacing:-.01em}
+h3{font-size:14.5px;margin:0 0 10px;font-weight:620}
+.lead{color:var(--ink-2);margin:0 0 16px;max-width:900px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr}}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:16px;min-width:0}
+.card.flush{padding:0}
+.card .head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.card .head h3{margin:0}
+.card .head .sub{color:var(--muted);font-size:12.5px}
+.card .head .actions{margin-left:auto;display:flex;gap:6px}
+.tile{background:var(--surface);border:1px solid var(--ring);border-radius:var(--radius);padding:12px 14px}
+.tile .l{color:var(--ink-2);font-size:12.5px}
+.tile .v{font-size:24px;font-weight:620;margin-top:2px;letter-spacing:-.01em}
+.tile .d{color:var(--muted);font-size:12px;margin-top:2px}
+.tile.click{cursor:pointer}
+.tile.click:hover{background:var(--surface-2)}
+.tile.sel{outline:2px solid var(--ink)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:1px 8px 1px 6px;border-radius:12px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--ink);white-space:nowrap}
+.badge i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.muted{color:var(--muted)}
+.ink2{color:var(--ink-2)}
+.pos{color:var(--good-ink)}
+.neg{color:var(--crit)}
+.note{font-size:12.5px;color:var(--muted);margin-top:8px}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink-2);margin-bottom:6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:3px;border-radius:2px;display:inline-block}
+.legend i.dot{width:9px;height:9px;border-radius:50%}
+/* tabela */
+.tblwrap{overflow:auto;max-height:620px;border-radius:0 0 var(--radius) var(--radius)}
+table.t{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:13px}
+table.t th{position:sticky;top:0;background:var(--surface);z-index:2;text-align:left;font-weight:600;color:var(--ink-2);font-size:12px;padding:8px 10px;border-bottom:1px solid var(--axis);cursor:pointer;white-space:nowrap;user-select:none}
+table.t th.num,table.t td.num{text-align:right;font-variant-numeric:tabular-nums}
+table.t th .arr{color:var(--muted);margin-left:3px}
+table.t td{padding:7px 10px;border-bottom:1px solid var(--grid);vertical-align:top}
+table.t tr.click{cursor:pointer}
+table.t tbody tr:hover td{background:var(--hover)}
+table.t td.wrap{white-space:normal;width:340px;min-width:340px;max-width:340px;color:var(--ink-2)}
+table.t td.nowrap{white-space:nowrap}
+.tblbar{display:flex;gap:8px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--grid);flex-wrap:wrap}
+.tblbar h3{margin:0}
+.tblbar .sub{color:var(--muted);font-size:12.5px}
+.tblbar .sp{margin-left:auto;display:flex;gap:6px;align-items:center}
+.more{padding:10px 16px;color:var(--muted);font-size:12.5px;display:flex;gap:10px;align-items:center}
+/* barras */
+.bars{display:flex;flex-direction:column;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:10px;align-items:center;font-size:12.5px}
+.bar .lb{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink-2)}
+.bar .tr{position:relative;height:16px;display:flex;align-items:center}
+.bar .fl{height:14px;border-radius:0 4px 4px 0;background:var(--s1);min-width:2px}
+.bar .vl{margin-left:6px;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.bar.click{cursor:pointer}
+.bar.click:hover .lb{color:var(--ink)}
+/* gráfico */
+.chart{position:relative;width:100%}
+.chart svg{display:block;overflow:visible}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--muted)}
+#tip{position:fixed;z-index:100;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 6px 24px rgba(0,0,0,.14);border-radius:8px;padding:8px 10px;font-size:12.5px;min-width:120px;max-width:340px;display:none}
+#tip .tt{font-weight:600;margin-bottom:4px}
+#tip .row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+#tip .row span:first-child{display:flex;align-items:center;gap:6px;color:var(--ink-2)}
+#tip i{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* drop */
+.drop{max-width:760px;margin:60px auto;text-align:center}
+.dropzone{border:2px dashed var(--axis);border-radius:16px;padding:48px 24px;background:var(--surface);cursor:pointer;transition:.15s}
+.dropzone.over{border-color:var(--accent);background:var(--surface-2)}
+.dropzone h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+.dropzone p{color:var(--ink-2);margin:4px 0}
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:22px;text-align:left}
+.feat div{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:12px;font-size:13px;color:var(--ink-2)}
+.feat b{display:block;color:var(--ink);margin-bottom:2px}
+@media (max-width:700px){.feat{grid-template-columns:1fr}}
+.progress{max-width:520px;margin:90px auto;text-align:center}
+.pbar{height:6px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin:14px 0 8px}
+.pbar div{height:100%;background:var(--accent);width:0;transition:width .15s}
+.err{background:var(--surface);border:1px solid var(--crit);border-radius:10px;padding:14px;color:var(--ink);margin:20px auto;max-width:760px}
+.rules{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin-bottom:16px}
+.rule{background:var(--surface);border:1px solid var(--ring);border-radius:10px;padding:10px 12px;cursor:pointer}
+.rule:hover{background:var(--surface-2)}
+.rule.sel{outline:2px solid var(--ink)}
+.rule .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rule .n{font-size:20px;font-weight:620}
+.rule .lbl{font-weight:600;font-size:13px}
+.rule .ds{color:var(--muted);font-size:12px;margin-top:3px}
+.params{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 18px;margin-top:10px}
+.params label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)}
+.rec-card{border-left:4px solid var(--neutral)}
+.motivos{margin:6px 0 0;padding-left:18px;color:var(--ink-2)}
+.motivos li{margin:3px 0}
+.hl{display:grid;gap:8px}
+.hl .it{display:flex;gap:10px;align-items:flex-start;font-size:13.5px}
+.hl .it .k{flex:none}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+details.how summary{cursor:pointer;color:var(--ink-2);font-size:13px}
+details.how{margin:-6px 0 14px}
+details.how div{font-size:13px;color:var(--ink-2);padding:8px 0 0;max-width:980px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.sim{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.sim .big{font-size:22px;font-weight:620}
+.hubpick{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.hubpick input{min-width:320px}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>ROFI <small>· analisador de roteirização</small></div>
+    <div class="fileinfo" id="fileinfo"></div>
+  </div>
+  <nav class="tabs" id="tabs" hidden></nav>
+</header>
+<div class="wrap">
+  <div id="filters" class="filters" hidden></div>
+  <main id="main"></main>
+</div>
+<input type="file" id="file" accept=".xlsx,.xlsm" hidden>
+<div id="tip"></div>
+<div class="toast" id="toast"></div>
+<script id="worker-src" type="text/plain">// ROFI Analyzer — leitor de XLSX em streaming (roda em Web Worker, sem bibliotecas externas)
+// Lê o .xlsx direto do zip com DecompressionStream e processa o XML linha a linha.
+
+const XL = (() => {
+  const td = new TextDecoder('utf-8');
+
+  function u16(b, o) { return b[o] | (b[o + 1] << 8); }
+  function u32(b, o) { return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+
+  function readZipIndex(u8) {
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 70000); i--) {
+      if (u8[i] === 0x50 && u8[i + 1] === 0x4b && u8[i + 2] === 0x05 && u8[i + 3] === 0x06) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('Arquivo não parece ser um .xlsx válido (zip não encontrado).');
+    let count = u16(u8, eocd + 10);
+    let cdOff = u32(u8, eocd + 16);
+    // zip64
+    if (cdOff === 0xffffffff || count === 0xffff) {
+      const loc = eocd - 20;
+      if (u32(u8, loc) === 0x07064b50) {
+        const z64 = Number(new DataView(u8.buffer, u8.byteOffset).getBigUint64(loc + 8, true));
+        const dv = new DataView(u8.buffer, u8.byteOffset);
+        count = Number(dv.getBigUint64(z64 + 32, true));
+        cdOff = Number(dv.getBigUint64(z64 + 48, true));
+      }
+    }
+    const entries = {};
+    let p = cdOff;
+    for (let i = 0; i < count; i++) {
+      if (u32(u8, p) !== 0x02014b50) break;
+      const method = u16(u8, p + 10);
+      let csize = u32(u8, p + 20);
+      let usize = u32(u8, p + 24);
+      const nlen = u16(u8, p + 28), xlen = u16(u8, p + 30), clen = u16(u8, p + 32);
+      let lho = u32(u8, p + 42);
+      const name = td.decode(u8.subarray(p + 46, p + 46 + nlen));
+      // zip64 extra
+      if (csize === 0xffffffff || usize === 0xffffffff || lho === 0xffffffff) {
+        let q = p + 46 + nlen; const end = q + xlen;
+        const dv = new DataView(u8.buffer, u8.byteOffset);
+        while (q < end) {
+          const id = u16(u8, q), sz = u16(u8, q + 2);
+          if (id === 1) {
+            let r = q + 4;
+            if (usize === 0xffffffff) { usize = Number(dv.getBigUint64(r, true)); r += 8; }
+            if (csize === 0xffffffff) { csize = Number(dv.getBigUint64(r, true)); r += 8; }
+            if (lho === 0xffffffff) { lho = Number(dv.getBigUint64(r, true)); r += 8; }
+          }
+          q += 4 + sz;
+        }
+      }
+      entries[name] = { method, csize, usize, lho };
+      p += 46 + nlen + xlen + clen;
+    }
+    return entries;
+  }
+
+  function entryStream(u8, e) {
+    const nlen = u16(u8, e.lho + 26), xlen = u16(u8, e.lho + 28);
+    const start = e.lho + 30 + nlen + xlen;
+    const data = u8.subarray(start, start + e.csize);
+    let s = new Blob([data]).stream();
+    if (e.method === 8) s = s.pipeThrough(new DecompressionStream('deflate-raw'));
+    else if (e.method !== 0) throw new Error('Compressão não suportada no xlsx: ' + e.method);
+    return s.pipeThrough(new TextDecoderStream('utf-8'));
+  }
+
+  async function entryText(u8, entries, name) {
+    const e = entries[name];
+    if (!e) return null;
+    const r = entryStream(u8, e).getReader();
+    let out = '';
+    for (;;) { const { done, value } = await r.read(); if (done) break; out += value; }
+    return out;
+  }
+
+  const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  function unesc(s) {
+    if (s.indexOf('&') < 0 && s.indexOf('_x') < 0) return s;
+    s = s.replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);/g, (m, g) => {
+      if (g[0] === '#') return String.fromCodePoint(g[1] === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10));
+      return ENT[g];
+    });
+    return s.replace(/_x([0-9A-Fa-f]{4})_/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
+  }
+
+  function textOf(inner) {
+    // concatena <t> (ignorando <rPh> fonético)
+    inner = inner.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '');
+    let out = '', m; const re = /<t\b[^>]*>([\s\S]*?)<\/t>|<t\b[^>]*\/>/g;
+    while ((m = re.exec(inner))) out += m[1] || '';
+    return unesc(out);
+  }
+
+  async function sharedStrings(u8, entries, progress) {
+    const e = entries['xl/sharedStrings.xml'];
+    if (!e) return [];
+    const r = entryStream(u8, e).getReader();
+    const out = []; let buf = ''; let seen = 0;
+    for (;;) {
+      const { done, value } = await r.read();
+      if (value) { buf += value; seen += value.length; }
+      const last = buf.lastIndexOf('</si>');
+      if (last >= 0 || done) {
+        const chunk = done ? buf : buf.slice(0, last + 5);
+        buf = done ? '' : buf.slice(last + 5);
+        const re = /<si>([\s\S]*?)<\/si>|<si\/>/g; let m;
+        while ((m = re.exec(chunk))) out.push(m[1] ? textOf(m[1]) : '');
+        if (progress) progress(Math.min(1, seen / Math.max(1, e.usize)));
+      }
+      if (done) break;
+    }
+    return out;
+  }
+
+  function colIndex(ref) {
+    let n = 0;
+    for (let i = 0; i < ref.length; i++) {
+      const c = ref.charCodeAt(i);
+      if (c >= 65 && c <= 90) n = n * 26 + (c - 64); else break;
+    }
+    return n - 1;
+  }
+
+  async function sheetMap(u8, entries) {
+    const wb = await entryText(u8, entries, 'xl/workbook.xml');
+    const rels = await entryText(u8, entries, 'xl/_rels/workbook.xml.rels') || '';
+    const relMap = {}; let m;
+    const rre = /<Relationship\b([^>]*)\/?>/g;
+    while ((m = rre.exec(rels))) {
+      const a = m[1];
+      const id = (a.match(/\bId="([^"]+)"/) || [])[1];
+      let t = (a.match(/\bTarget="([^"]+)"/) || [])[1];
+      if (!id || !t) continue;
+      t = t.replace(/^\//, '');
+      if (!t.startsWith('xl/')) t = 'xl/' + t;
+      relMap[id] = t;
+    }
+    const sheets = [];
+    const sre = /<sheet\b([^>]*)\/?>/g;
+    while ((m = sre.exec(wb))) {
+      const a = m[1];
+      const name = unesc((a.match(/\bname="([^"]*)"/) || [])[1] || '');
+      const rid = (a.match(/\br:id="([^"]+)"/) || a.match(/\bid="([^"]+)"/) || [])[1];
+      sheets.push({ name, path: relMap[rid] });
+    }
+    return sheets;
+  }
+
+  // Lê uma aba linha a linha. onRow(arrayDeValores, indiceDaLinha) — retornar false interrompe.
+  async function readSheet(u8, entries, path, sst, onRow, progress) {
+    const e = entries[path];
+    if (!e) throw new Error('Aba não encontrada no arquivo: ' + path);
+    const r = entryStream(u8, e).getReader();
+    let buf = '', seen = 0, rowNo = 0, stop = false;
+    const rowRe = /<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g;
+    const cRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+    while (!stop) {
+      const { done, value } = await r.read();
+      if (value) { buf += value; seen += value.length; }
+      let last = buf.lastIndexOf('</row>');
+      const sc = buf.lastIndexOf('/>');
+      if (last < 0 && !done) continue;
+      const cut = done ? buf.length : last + 6;
+      const chunk = buf.slice(0, cut);
+      buf = buf.slice(cut);
+      rowRe.lastIndex = 0; let rm;
+      while ((rm = rowRe.exec(chunk))) {
+        const ra = rm[1];
+        const rn = ra.match(/\br="(\d+)"/);
+        const idx = rn ? parseInt(rn[1], 10) - 1 : rowNo;
+        rowNo = idx + 1;
+        const inner = rm[2];
+        const row = [];
+        if (inner) {
+          cRe.lastIndex = 0; let cm, ci = 0;
+          while ((cm = cRe.exec(inner))) {
+            const a = cm[1];
+            const refm = a.match(/\br="([A-Z]+)\d*"/);
+            const col = refm ? colIndex(refm[1]) : ci;
+            ci = col + 1;
+            const body = cm[2];
+            if (!body) continue;
+            const tm = a.match(/\bt="([^"]+)"/);
+            const t = tm ? tm[1] : 'n';
+            let v = null;
+            if (t === 'inlineStr') { v = textOf(body); }
+            else {
+              const vm = body.match(/<v>([\s\S]*?)<\/v>/);
+              if (!vm) continue;
+              const raw = vm[1];
+              if (t === 's') v = sst[parseInt(raw, 10)];
+              else if (t === 'str') v = unesc(raw);
+              else if (t === 'b') v = raw === '1';
+              else if (t === 'e') v = null;
+              else { const n = Number(raw); v = isNaN(n) ? unesc(raw) : n; }
+            }
+            if (v === '' || v === undefined) v = null;
+            row[col] = v;
+          }
+        }
+        if (onRow(row, idx) === false) { stop = true; break; }
+      }
+      if (progress) progress(Math.min(1, seen / Math.max(1, e.usize)));
+      if (done) break;
+    }
+    try { r.cancel(); } catch (_) {}
+  }
+
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+
+  // ---------- construtor compacto da aba Órfãos (usado pelo xlsx e pelo Google Sheets) ----------
+  function orfBuilder() {
+    let cap = 400000;
+    let day = new Int32Array(cap), hub = new Uint16Array(cap), cic = new Uint8Array(cap), clu = new Uint32Array(cap),
+      cat = new Uint8Array(cap), vol = new Float32Array(cap), sit = new Uint8Array(cap), flag = new Uint8Array(cap);
+    const dict = { hub: [], ciclo: [], cluster: [], cat: [], sit: [] };
+    const ix = { hub: new Map(), ciclo: new Map(), cluster: new Map(), cat: new Map(), sit: new Map() };
+    const intern = (k, v) => { v = v == null ? '' : String(v).trim(); let i = ix[k].get(v); if (i === undefined) { i = dict[k].length; dict[k].push(v); ix[k].set(v, i); } return i; };
+    const seen = new Set();
+    let n = 0, col = null, minDay = Infinity, maxDay = -Infinity;
+    const grow = () => {
+      cap *= 2;
+      const g = (A, a) => { const b = new A(cap); b.set(a); return b; };
+      day = g(Int32Array, day); hub = g(Uint16Array, hub); cic = g(Uint8Array, cic); clu = g(Uint32Array, clu);
+      cat = g(Uint8Array, cat); vol = g(Float32Array, vol); sit = g(Uint8Array, sit); flag = g(Uint8Array, flag);
+    };
+    const toSerial = v => {
+      if (typeof v === 'number') return Math.floor(v);
+      if (typeof v === 'string') {
+        const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m) return Math.round((Date.UTC(+m[3], +m[2] - 1, +m[1]) - Date.UTC(1899, 11, 30)) / 864e5);
+        const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m2) return Math.round((Date.UTC(+m2[1], +m2[2] - 1, +m2[3]) - Date.UTC(1899, 11, 30)) / 864e5);
+      }
+      return 0;
+    };
+    const num = v => { if (typeof v === 'number') return v; if (v == null || v === '') return 0; let s = String(v).trim(); if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(',', '.'); const x = Number(s); return isFinite(x) ? x : 0; };
+    return {
+      setHeader(row) {
+        const ns = row.map(norm);
+        const f = (...names) => { for (const nm of names) { const i = ns.indexOf(nm); if (i >= 0) return i; } return -1; };
+        col = { data: f('data'), hub: f('hub'), ciclo: f('ciclo'), cluster: f('cluster'), cls: f('classificacao'), cat: f('categoria spx', 'categoria'), vol: f('volume (l)', 'volume'), sit: f('situacao'), br: f('br') };
+      },
+      hasHeader() { return !!col; },
+      push(row) {
+        if (!col) { this.setHeader(row); return null; }
+        const hv = row[col.hub], bv = row[col.br];
+        if ((hv == null || hv === '') && (bv == null || bv === '')) return null;
+        if (n >= cap) grow();
+        const d = toSerial(row[col.data]);
+        const h = intern('hub', hv);
+        day[n] = d; hub[n] = h;
+        if (d > 0) { if (d < minDay) minDay = d; if (d > maxDay) maxDay = d; }
+        cic[n] = intern('ciclo', row[col.ciclo]);
+        clu[n] = intern('cluster', row[col.cluster]);
+        cat[n] = intern('cat', col.cat >= 0 ? row[col.cat] : row[col.cls]);
+        vol[n] = num(row[col.vol]);
+        { let sv = row[col.sit]; sv = sv == null ? '' : String(sv).trim(); if (/^realocad/i.test(sv)) sv = 'Realocado'; sit[n] = intern('sit', sv); }
+        const key = bv + '|' + d + '|' + h;
+        flag[n] = seen.has(key) ? 1 : 0; seen.add(key);
+        n++;
+        return d;
+      },
+      finish() {
+        return { n, day: day.slice(0, n), hub: hub.slice(0, n), cic: cic.slice(0, n), clu: clu.slice(0, n), cat: cat.slice(0, n), vol: vol.slice(0, n), sit: sit.slice(0, n), dup: flag.slice(0, n), dict, minDay, maxDay };
+      },
+    };
+  }
+
+  // ---------- leitura específica do ROFI ----------
+  async function parseRofi(buffer, opts, progress) {
+    opts = opts || {};
+    const u8 = new Uint8Array(buffer);
+    const entries = readZipIndex(u8);
+    const sheets = await sheetMap(u8, entries);
+    const find = pred => sheets.find(s => pred(norm(s.name)));
+    const shMain = find(n => n === 'rofi_3.0') || find(n => /^rofi[_ ]?3/.test(n)) || find(n => n.startsWith('rofi'));
+    const shSup = find(n => n === 'suporte');
+    const shOrf = find(n => n === 'orfaos');
+    const sizes = {
+      sst: (entries['xl/sharedStrings.xml'] || {}).usize || 0,
+      main: shMain ? (entries[shMain.path] || {}).usize || 0 : 0,
+      sup: shSup ? (entries[shSup.path] || {}).usize || 0 : 0,
+      orf: (opts.orfaos && shOrf) ? (entries[shOrf.path] || {}).usize || 0 : 0,
+    };
+    const total = sizes.sst + sizes.main + sizes.sup + sizes.orf || 1;
+    let doneBytes = 0;
+    const stage = (label, size) => f => progress && progress(label, (doneBytes + f * size) / total);
+
+    progress && progress('Lendo textos da planilha', 0);
+    const sst = await sharedStrings(u8, entries, stage('Lendo textos da planilha', sizes.sst));
+    doneBytes += sizes.sst;
+
+    const result = { sheets: sheets.map(s => s.name), main: null, suporte: null, orfaos: null, mainName: shMain && shMain.name };
+
+    if (!shMain) throw new Error('Não encontrei a aba ROFI_3.0 no arquivo. Abas encontradas: ' + sheets.map(s => s.name).join(', '));
+    {
+      const rows = []; let header = null, headerIdx = -1;
+      await readSheet(u8, entries, shMain.path, sst, (row, idx) => {
+        if (!header) {
+          const ns = row.map(norm);
+          if (ns.includes('spr_final') || (ns.includes('hub') && ns.includes('analista'))) { header = row.map(v => v == null ? '' : String(v).trim()); headerIdx = idx; }
+          else if (idx > 10) { throw new Error('Cabeçalho da aba ' + shMain.name + ' não encontrado.'); }
+          return;
+        }
+        if (row.length && row.some(v => v != null)) rows.push(row);
+      }, stage('Lendo ' + shMain.name, sizes.main));
+      doneBytes += sizes.main;
+      result.main = { header, rows };
+    }
+
+    if (shSup) {
+      const rows = []; let header = null;
+      await readSheet(u8, entries, shSup.path, sst, (row, idx) => {
+        if (!header) { if (row.some(v => v != null)) header = row.map(v => v == null ? '' : String(v).trim()); return; }
+        if (row.some(v => v != null)) rows.push(row);
+      }, stage('Lendo Suporte', sizes.sup));
+      doneBytes += sizes.sup;
+      result.suporte = { header, rows };
+    }
+
+    if (opts.orfaos && shOrf) {
+      const B = orfBuilder();
+      await readSheet(u8, entries, shOrf.path, sst, (row) => { B.push(row); }, stage('Lendo Órfãos', sizes.orf));
+      doneBytes += sizes.orf;
+      result.orfaos = B.finish();
+    }
+    result.hasOrfaosSheet = !!shOrf;
+    progress && progress('Pronto', 1);
+    return result;
+  }
+
+  return { parseRofi, readZipIndex, sheetMap, orfBuilder, norm };
+})();
+
+if (typeof self !== 'undefined' && typeof self.postMessage === 'function' && typeof window === 'undefined' && typeof module === 'undefined') {
+  self.onmessage = async (ev) => {
+    const { buffer, opts } = ev.data;
+    let lastP = -1;
+    try {
+      const res = await XL.parseRofi(buffer, opts, (label, p) => {
+        const q = Math.round(p * 100);
+        if (q !== lastP) { lastP = q; self.postMessage({ type: 'progress', label, p }); }
+      });
+      const transfer = [];
+      if (res.orfaos) for (const k of ['day', 'hub', 'cic', 'clu', 'cat', 'vol', 'sit', 'dup']) transfer.push(res.orfaos[k].buffer);
+      self.postMessage({ type: 'done', res }, transfer);
+    } catch (err) {
+      self.postMessage({ type: 'error', message: String(err && err.message || err) });
+    }
+  };
+}
+if (typeof module !== 'undefined') module.exports = XL;
+</script>
+<script>// ROFI Analyzer — leitor de XLSX em streaming (roda em Web Worker, sem bibliotecas externas)
+// Lê o .xlsx direto do zip com DecompressionStream e processa o XML linha a linha.
+
+const XL = (() => {
+  const td = new TextDecoder('utf-8');
+
+  function u16(b, o) { return b[o] | (b[o + 1] << 8); }
+  function u32(b, o) { return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+
+  function readZipIndex(u8) {
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 70000); i--) {
+      if (u8[i] === 0x50 && u8[i + 1] === 0x4b && u8[i + 2] === 0x05 && u8[i + 3] === 0x06) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('Arquivo não parece ser um .xlsx válido (zip não encontrado).');
+    let count = u16(u8, eocd + 10);
+    let cdOff = u32(u8, eocd + 16);
+    // zip64
+    if (cdOff === 0xffffffff || count === 0xffff) {
+      const loc = eocd - 20;
+      if (u32(u8, loc) === 0x07064b50) {
+        const z64 = Number(new DataView(u8.buffer, u8.byteOffset).getBigUint64(loc + 8, true));
+        const dv = new DataView(u8.buffer, u8.byteOffset);
+        count = Number(dv.getBigUint64(z64 + 32, true));
+        cdOff = Number(dv.getBigUint64(z64 + 48, true));
+      }
+    }
+    const entries = {};
+    let p = cdOff;
+    for (let i = 0; i < count; i++) {
+      if (u32(u8, p) !== 0x02014b50) break;
+      const method = u16(u8, p + 10);
+      let csize = u32(u8, p + 20);
+      let usize = u32(u8, p + 24);
+      const nlen = u16(u8, p + 28), xlen = u16(u8, p + 30), clen = u16(u8, p + 32);
+      let lho = u32(u8, p + 42);
+      const name = td.decode(u8.subarray(p + 46, p + 46 + nlen));
+      // zip64 extra
+      if (csize === 0xffffffff || usize === 0xffffffff || lho === 0xffffffff) {
+        let q = p + 46 + nlen; const end = q + xlen;
+        const dv = new DataView(u8.buffer, u8.byteOffset);
+        while (q < end) {
+          const id = u16(u8, q), sz = u16(u8, q + 2);
+          if (id === 1) {
+            let r = q + 4;
+            if (usize === 0xffffffff) { usize = Number(dv.getBigUint64(r, true)); r += 8; }
+            if (csize === 0xffffffff) { csize = Number(dv.getBigUint64(r, true)); r += 8; }
+            if (lho === 0xffffffff) { lho = Number(dv.getBigUint64(r, true)); r += 8; }
+          }
+          q += 4 + sz;
+        }
+      }
+      entries[name] = { method, csize, usize, lho };
+      p += 46 + nlen + xlen + clen;
+    }
+    return entries;
+  }
+
+  function entryStream(u8, e) {
+    const nlen = u16(u8, e.lho + 26), xlen = u16(u8, e.lho + 28);
+    const start = e.lho + 30 + nlen + xlen;
+    const data = u8.subarray(start, start + e.csize);
+    let s = new Blob([data]).stream();
+    if (e.method === 8) s = s.pipeThrough(new DecompressionStream('deflate-raw'));
+    else if (e.method !== 0) throw new Error('Compressão não suportada no xlsx: ' + e.method);
+    return s.pipeThrough(new TextDecoderStream('utf-8'));
+  }
+
+  async function entryText(u8, entries, name) {
+    const e = entries[name];
+    if (!e) return null;
+    const r = entryStream(u8, e).getReader();
+    let out = '';
+    for (;;) { const { done, value } = await r.read(); if (done) break; out += value; }
+    return out;
+  }
+
+  const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+  function unesc(s) {
+    if (s.indexOf('&') < 0 && s.indexOf('_x') < 0) return s;
+    s = s.replace(/&(#x[0-9a-fA-F]+|#\d+|amp|lt|gt|quot|apos);/g, (m, g) => {
+      if (g[0] === '#') return String.fromCodePoint(g[1] === 'x' ? parseInt(g.slice(2), 16) : parseInt(g.slice(1), 10));
+      return ENT[g];
+    });
+    return s.replace(/_x([0-9A-Fa-f]{4})_/g, (m, h) => String.fromCharCode(parseInt(h, 16)));
+  }
+
+  function textOf(inner) {
+    // concatena <t> (ignorando <rPh> fonético)
+    inner = inner.replace(/<rPh\b[\s\S]*?<\/rPh>/g, '');
+    let out = '', m; const re = /<t\b[^>]*>([\s\S]*?)<\/t>|<t\b[^>]*\/>/g;
+    while ((m = re.exec(inner))) out += m[1] || '';
+    return unesc(out);
+  }
+
+  async function sharedStrings(u8, entries, progress) {
+    const e = entries['xl/sharedStrings.xml'];
+    if (!e) return [];
+    const r = entryStream(u8, e).getReader();
+    const out = []; let buf = ''; let seen = 0;
+    for (;;) {
+      const { done, value } = await r.read();
+      if (value) { buf += value; seen += value.length; }
+      const last = buf.lastIndexOf('</si>');
+      if (last >= 0 || done) {
+        const chunk = done ? buf : buf.slice(0, last + 5);
+        buf = done ? '' : buf.slice(last + 5);
+        const re = /<si>([\s\S]*?)<\/si>|<si\/>/g; let m;
+        while ((m = re.exec(chunk))) out.push(m[1] ? textOf(m[1]) : '');
+        if (progress) progress(Math.min(1, seen / Math.max(1, e.usize)));
+      }
+      if (done) break;
+    }
+    return out;
+  }
+
+  function colIndex(ref) {
+    let n = 0;
+    for (let i = 0; i < ref.length; i++) {
+      const c = ref.charCodeAt(i);
+      if (c >= 65 && c <= 90) n = n * 26 + (c - 64); else break;
+    }
+    return n - 1;
+  }
+
+  async function sheetMap(u8, entries) {
+    const wb = await entryText(u8, entries, 'xl/workbook.xml');
+    const rels = await entryText(u8, entries, 'xl/_rels/workbook.xml.rels') || '';
+    const relMap = {}; let m;
+    const rre = /<Relationship\b([^>]*)\/?>/g;
+    while ((m = rre.exec(rels))) {
+      const a = m[1];
+      const id = (a.match(/\bId="([^"]+)"/) || [])[1];
+      let t = (a.match(/\bTarget="([^"]+)"/) || [])[1];
+      if (!id || !t) continue;
+      t = t.replace(/^\//, '');
+      if (!t.startsWith('xl/')) t = 'xl/' + t;
+      relMap[id] = t;
+    }
+    const sheets = [];
+    const sre = /<sheet\b([^>]*)\/?>/g;
+    while ((m = sre.exec(wb))) {
+      const a = m[1];
+      const name = unesc((a.match(/\bname="([^"]*)"/) || [])[1] || '');
+      const rid = (a.match(/\br:id="([^"]+)"/) || a.match(/\bid="([^"]+)"/) || [])[1];
+      sheets.push({ name, path: relMap[rid] });
+    }
+    return sheets;
+  }
+
+  // Lê uma aba linha a linha. onRow(arrayDeValores, indiceDaLinha) — retornar false interrompe.
+  async function readSheet(u8, entries, path, sst, onRow, progress) {
+    const e = entries[path];
+    if (!e) throw new Error('Aba não encontrada no arquivo: ' + path);
+    const r = entryStream(u8, e).getReader();
+    let buf = '', seen = 0, rowNo = 0, stop = false;
+    const rowRe = /<row\b([^>]*?)(?:\/>|>([\s\S]*?)<\/row>)/g;
+    const cRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
+    while (!stop) {
+      const { done, value } = await r.read();
+      if (value) { buf += value; seen += value.length; }
+      let last = buf.lastIndexOf('</row>');
+      const sc = buf.lastIndexOf('/>');
+      if (last < 0 && !done) continue;
+      const cut = done ? buf.length : last + 6;
+      const chunk = buf.slice(0, cut);
+      buf = buf.slice(cut);
+      rowRe.lastIndex = 0; let rm;
+      while ((rm = rowRe.exec(chunk))) {
+        const ra = rm[1];
+        const rn = ra.match(/\br="(\d+)"/);
+        const idx = rn ? parseInt(rn[1], 10) - 1 : rowNo;
+        rowNo = idx + 1;
+        const inner = rm[2];
+        const row = [];
+        if (inner) {
+          cRe.lastIndex = 0; let cm, ci = 0;
+          while ((cm = cRe.exec(inner))) {
+            const a = cm[1];
+            const refm = a.match(/\br="([A-Z]+)\d*"/);
+            const col = refm ? colIndex(refm[1]) : ci;
+            ci = col + 1;
+            const body = cm[2];
+            if (!body) continue;
+            const tm = a.match(/\bt="([^"]+)"/);
+            const t = tm ? tm[1] : 'n';
+            let v = null;
+            if (t === 'inlineStr') { v = textOf(body); }
+            else {
+              const vm = body.match(/<v>([\s\S]*?)<\/v>/);
+              if (!vm) continue;
+              const raw = vm[1];
+              if (t === 's') v = sst[parseInt(raw, 10)];
+              else if (t === 'str') v = unesc(raw);
+              else if (t === 'b') v = raw === '1';
+              else if (t === 'e') v = null;
+              else { const n = Number(raw); v = isNaN(n) ? unesc(raw) : n; }
+            }
+            if (v === '' || v === undefined) v = null;
+            row[col] = v;
+          }
+        }
+        if (onRow(row, idx) === false) { stop = true; break; }
+      }
+      if (progress) progress(Math.min(1, seen / Math.max(1, e.usize)));
+      if (done) break;
+    }
+    try { r.cancel(); } catch (_) {}
+  }
+
+  const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+
+  // ---------- construtor compacto da aba Órfãos (usado pelo xlsx e pelo Google Sheets) ----------
+  function orfBuilder() {
+    let cap = 400000;
+    let day = new Int32Array(cap), hub = new Uint16Array(cap), cic = new Uint8Array(cap), clu = new Uint32Array(cap),
+      cat = new Uint8Array(cap), vol = new Float32Array(cap), sit = new Uint8Array(cap), flag = new Uint8Array(cap);
+    const dict = { hub: [], ciclo: [], cluster: [], cat: [], sit: [] };
+    const ix = { hub: new Map(), ciclo: new Map(), cluster: new Map(), cat: new Map(), sit: new Map() };
+    const intern = (k, v) => { v = v == null ? '' : String(v).trim(); let i = ix[k].get(v); if (i === undefined) { i = dict[k].length; dict[k].push(v); ix[k].set(v, i); } return i; };
+    const seen = new Set();
+    let n = 0, col = null, minDay = Infinity, maxDay = -Infinity;
+    const grow = () => {
+      cap *= 2;
+      const g = (A, a) => { const b = new A(cap); b.set(a); return b; };
+      day = g(Int32Array, day); hub = g(Uint16Array, hub); cic = g(Uint8Array, cic); clu = g(Uint32Array, clu);
+      cat = g(Uint8Array, cat); vol = g(Float32Array, vol); sit = g(Uint8Array, sit); flag = g(Uint8Array, flag);
+    };
+    const toSerial = v => {
+      if (typeof v === 'number') return Math.floor(v);
+      if (typeof v === 'string') {
+        const m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (m) return Math.round((Date.UTC(+m[3], +m[2] - 1, +m[1]) - Date.UTC(1899, 11, 30)) / 864e5);
+        const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (m2) return Math.round((Date.UTC(+m2[1], +m2[2] - 1, +m2[3]) - Date.UTC(1899, 11, 30)) / 864e5);
+      }
+      return 0;
+    };
+    const num = v => { if (typeof v === 'number') return v; if (v == null || v === '') return 0; let s = String(v).trim(); if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.'); else s = s.replace(',', '.'); const x = Number(s); return isFinite(x) ? x : 0; };
+    return {
+      setHeader(row) {
+        const ns = row.map(norm);
+        const f = (...names) => { for (const nm of names) { const i = ns.indexOf(nm); if (i >= 0) return i; } return -1; };
+        col = { data: f('data'), hub: f('hub'), ciclo: f('ciclo'), cluster: f('cluster'), cls: f('classificacao'), cat: f('categoria spx', 'categoria'), vol: f('volume (l)', 'volume'), sit: f('situacao'), br: f('br') };
+      },
+      hasHeader() { return !!col; },
+      push(row) {
+        if (!col) { this.setHeader(row); return null; }
+        const hv = row[col.hub], bv = row[col.br];
+        if ((hv == null || hv === '') && (bv == null || bv === '')) return null;
+        if (n >= cap) grow();
+        const d = toSerial(row[col.data]);
+        const h = intern('hub', hv);
+        day[n] = d; hub[n] = h;
+        if (d > 0) { if (d < minDay) minDay = d; if (d > maxDay) maxDay = d; }
+        cic[n] = intern('ciclo', row[col.ciclo]);
+        clu[n] = intern('cluster', row[col.cluster]);
+        cat[n] = intern('cat', col.cat >= 0 ? row[col.cat] : row[col.cls]);
+        vol[n] = num(row[col.vol]);
+        { let sv = row[col.sit]; sv = sv == null ? '' : String(sv).trim(); if (/^realocad/i.test(sv)) sv = 'Realocado'; sit[n] = intern('sit', sv); }
+        const key = bv + '|' + d + '|' + h;
+        flag[n] = seen.has(key) ? 1 : 0; seen.add(key);
+        n++;
+        return d;
+      },
+      finish() {
+        return { n, day: day.slice(0, n), hub: hub.slice(0, n), cic: cic.slice(0, n), clu: clu.slice(0, n), cat: cat.slice(0, n), vol: vol.slice(0, n), sit: sit.slice(0, n), dup: flag.slice(0, n), dict, minDay, maxDay };
+      },
+    };
+  }
+
+  // ---------- leitura específica do ROFI ----------
+  async function parseRofi(buffer, opts, progress) {
+    opts = opts || {};
+    const u8 = new Uint8Array(buffer);
+    const entries = readZipIndex(u8);
+    const sheets = await sheetMap(u8, entries);
+    const find = pred => sheets.find(s => pred(norm(s.name)));
+    const shMain = find(n => n === 'rofi_3.0') || find(n => /^rofi[_ ]?3/.test(n)) || find(n => n.startsWith('rofi'));
+    const shSup = find(n => n === 'suporte');
+    const shOrf = find(n => n === 'orfaos');
+    const sizes = {
+      sst: (entries['xl/sharedStrings.xml'] || {}).usize || 0,
+      main: shMain ? (entries[shMain.path] || {}).usize || 0 : 0,
+      sup: shSup ? (entries[shSup.path] || {}).usize || 0 : 0,
+      orf: (opts.orfaos && shOrf) ? (entries[shOrf.path] || {}).usize || 0 : 0,
+    };
+    const total = sizes.sst + sizes.main + sizes.sup + sizes.orf || 1;
+    let doneBytes = 0;
+    const stage = (label, size) => f => progress && progress(label, (doneBytes + f * size) / total);
+
+    progress && progress('Lendo textos da planilha', 0);
+    const sst = await sharedStrings(u8, entries, stage('Lendo textos da planilha', sizes.sst));
+    doneBytes += sizes.sst;
+
+    const result = { sheets: sheets.map(s => s.name), main: null, suporte: null, orfaos: null, mainName: shMain && shMain.name };
+
+    if (!shMain) throw new Error('Não encontrei a aba ROFI_3.0 no arquivo. Abas encontradas: ' + sheets.map(s => s.name).join(', '));
+    {
+      const rows = []; let header = null, headerIdx = -1;
+      await readSheet(u8, entries, shMain.path, sst, (row, idx) => {
+        if (!header) {
+          const ns = row.map(norm);
+          if (ns.includes('spr_final') || (ns.includes('hub') && ns.includes('analista'))) { header = row.map(v => v == null ? '' : String(v).trim()); headerIdx = idx; }
+          else if (idx > 10) { throw new Error('Cabeçalho da aba ' + shMain.name + ' não encontrado.'); }
+          return;
+        }
+        if (row.length && row.some(v => v != null)) rows.push(row);
+      }, stage('Lendo ' + shMain.name, sizes.main));
+      doneBytes += sizes.main;
+      result.main = { header, rows };
+    }
+
+    if (shSup) {
+      const rows = []; let header = null;
+      await readSheet(u8, entries, shSup.path, sst, (row, idx) => {
+        if (!header) { if (row.some(v => v != null)) header = row.map(v => v == null ? '' : String(v).trim()); return; }
+        if (row.some(v => v != null)) rows.push(row);
+      }, stage('Lendo Suporte', sizes.sup));
+      doneBytes += sizes.sup;
+      result.suporte = { header, rows };
+    }
+
+    if (opts.orfaos && shOrf) {
+      const B = orfBuilder();
+      await readSheet(u8, entries, shOrf.path, sst, (row) => { B.push(row); }, stage('Lendo Órfãos', sizes.orf));
+      doneBytes += sizes.orf;
+      result.orfaos = B.finish();
+    }
+    result.hasOrfaosSheet = !!shOrf;
+    progress && progress('Pronto', 1);
+    return result;
+  }
+
+  return { parseRofi, readZipIndex, sheetMap, orfBuilder, norm };
+})();
+
+if (typeof self !== 'undefined' && typeof self.postMessage === 'function' && typeof window === 'undefined' && typeof module === 'undefined') {
+  self.onmessage = async (ev) => {
+    const { buffer, opts } = ev.data;
+    let lastP = -1;
+    try {
+      const res = await XL.parseRofi(buffer, opts, (label, p) => {
+        const q = Math.round(p * 100);
+        if (q !== lastP) { lastP = q; self.postMessage({ type: 'progress', label, p }); }
+      });
+      const transfer = [];
+      if (res.orfaos) for (const k of ['day', 'hub', 'cic', 'clu', 'cat', 'vol', 'sit', 'dup']) transfer.push(res.orfaos[k].buffer);
+      self.postMessage({ type: 'done', res }, transfer);
+    } catch (err) {
+      self.postMessage({ type: 'error', message: String(err && err.message || err) });
+    }
+  };
+}
+if (typeof module !== 'undefined') module.exports = XL;
+</script>
+<script>// ROFI Analyzer — motor de análises (funções puras, sem DOM)
+const Core = (() => {
+  const N = v => {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return isFinite(v) ? v : null;
+    let s = String(v).trim().replace(/%$/, '').replace(/\s/g, '');
+    if (!s) return null;
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/^-?\d+,\d+$/.test(s)) s = s.replace(',', '.');
+    const n = Number(s); return isFinite(n) ? n : null;
+  };
+  const Z = v => N(v) || 0;
+  const S = v => v == null ? '' : String(v).trim();
+  const EXCEL0 = Date.UTC(1899, 11, 30);
+  const iso = ms => new Date(ms).toISOString().slice(0, 10);
+  const serialToIso = n => iso(EXCEL0 + Math.floor(n) * 864e5);
+  function toIso(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') return v > 20000 && v < 80000 ? serialToIso(v) : null;
+    const s = String(v).trim();
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    return null;
+  }
+  function toMin(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') { const f = v - Math.floor(v); return Math.round(f * 1440); }
+    const m = String(v).match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    return m ? (+m[1]) * 60 + (+m[2]) + (m[3] ? (+m[3]) / 60 : 0) : null;
+  }
+  const isoToSerial = s => Math.round((Date.parse(s + 'T00:00:00Z') - EXCEL0) / 864e5);
+  const addDays = (s, d) => iso(Date.parse(s + 'T00:00:00Z') + d * 864e5);
+  const dayDiff = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 864e5);
+  const normCiclo = c => { let s = S(c).toUpperCase().replace(/\s+/g, ''); const m = s.match(/^PM-?(\d)$/); if (m) return 'PM' + m[1]; return s; };
+  const ufOf = name => { const m = S(name).match(/Hub_([A-Z]{2})_/i); return m ? m[1].toUpperCase() : '—'; };
+  const shortHub = name => S(name).replace(/^L?M Hub_/i, '').replace(/_/g, ' ');
+  const verKey = v => { const m = S(v).match(/^(\d+)\.(\d+)\.(\d+)/); return m ? (+m[1]) * 1e6 + (+m[2]) * 1e3 + (+m[3]) : -1; };
+  const sum = (a, f) => { let s = 0; for (const x of a) { const v = f(x); if (v) s += v; } return s; };
+  const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+  const median = a => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); const h = b.length >> 1; return b.length % 2 ? b[h] : (b[h - 1] + b[h]) / 2; };
+  const quantile = (a, q) => { if (!a.length) return null; const b = [...a].sort((x, y) => x - y); const p = (b.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p); return b[lo] + (b[hi] - b[lo]) * (p - lo); };
+  const stdev = a => { if (a.length < 2) return null; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+  const div = (a, b) => b ? a / b : null;
+  const groupBy = (a, kf) => { const m = new Map(); for (const x of a) { const k = kf(x); let g = m.get(k); if (!g) m.set(k, g = []); g.push(x); } return m; };
+
+  // ---------- montagem do modelo ----------
+  const COLS = {
+    dp: 'data_processamento', dx: 'data_expedicao', hub: 'hub', hubNome: 'hub_nome', analista: 'analista', ciclo: 'ciclo', modo: 'modo',
+    fonte: 'fonte_lh', versao: 'versao', ini: 'inicio', fim: 'fim', tempo: 'tempo_min', romaneio: 'romaneio', id: 'id',
+    pedPlan: 'ped_planejados', pedRot: 'ped_roteirizados', naoRot: 'nao_roteirizados', baixoAdo: 'baixo_ado', backlog: 'backlog',
+    lhTotal: 'lh_total', lhAd: 'lh_aderentes', lhNao: 'lh_nao_aderentes', remPlan: 'rem_planejamento',
+    rotasPlan: 'rotas_plan', rotasFinal: 'rotas_final', sprPlan: 'spr_plan', sprFinal: 'spr_final',
+    pasPedP: 'passeio_ped_plan', pasRotP: 'passeio_rotas_plan', pasSprP: 'passeio_spr_plan', pasPed: 'passeio_ped_final', pasRot: 'passeio_rotas_final', pasSpr: 'passeio_spr_final',
+    motoPedP: 'moto_ped_plan', motoRotP: 'moto_rotas_plan', motoSprP: 'moto_spr_plan', motoPed: 'moto_ped_final', motoRot: 'moto_rotas_final', motoSpr: 'moto_spr_final',
+    fioPed: 'fiorino_ped_final', fioRot: 'fiorino_rotas_final', vanPed: 'van_ped_final', vanRot: 'van_rotas_final',
+    sdBaixoAdo: 'sd_baixo_ado', dedPedP: 'ded_ped_plan', dedRotP: 'ded_rotas_plan', dedRot: 'ded_rotas_final',
+    dispTot: 'disp_total', dispPas: 'disp_passeio', dispMoto: 'disp_moto', dispFio: 'disp_fiorino',
+    pp: 'perfil_pp', p: 'perfil_p', m: 'perfil_m', g: 'perfil_g', bulky: 'perfil_bulky',
+    orfIni: 'orfaos_iniciais', orfPct: 'porcentagem_orfaos', orfPP: 'orfaos_pp', orfP: 'orfaos_p', orfM: 'orfaos_m', orfG: 'orfaos_g', orfBulky: 'orfaos_bulky',
+    orfClusters: 'orfaos_clusters_ofensores', just: 'spr_justificativa', origem: 'origem',
+  };
+  const TXT = new Set(['dp', 'dx', 'hub', 'hubNome', 'analista', 'ciclo', 'modo', 'fonte', 'versao', 'ini', 'fim', 'romaneio', 'id', 'orfClusters', 'just', 'origem']);
+
+  function build(res) {
+    const h = res.main.header.map(x => S(x).toLowerCase());
+    const idx = {}; for (const k in COLS) idx[k] = h.indexOf(COLS[k]);
+    const missingCols = Object.keys(COLS).filter(k => idx[k] < 0).map(k => COLS[k]);
+    const ops = [];
+    const rows = res.main.rows;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const o = { _i: i, _line: i + 3 };
+      for (const k in COLS) { const j = idx[k]; const v = j >= 0 ? r[j] : null; o[k] = TXT.has(k) ? v : N(v); }
+      o.dpRaw = o.dp; o.dxRaw = o.dx;
+      o.dp = toIso(o.dp); o.dx = toIso(o.dx);
+      o.date = o.dx || o.dp;
+      o.iniMin = toMin(o.ini); o.fimMin = toMin(o.fim);
+      o.hub = S(o.hub); o.hubNome = S(o.hubNome); o.analista = S(o.analista).toLowerCase();
+      o.cicloRaw = S(o.ciclo); o.ciclo = normCiclo(o.ciclo);
+      o.modo = S(o.modo); o.fonte = S(o.fonte); o.versao = S(o.versao); o.id = S(o.id); o.just = S(o.just); o.origem = S(o.origem);
+      o.lhTotal = N(o.lhTotal);
+      o.uf = ufOf(o.hubNome);
+      // modal derivado: rotas_final ≈ passeio + moto + dedicadas
+      o.dedRotD = Math.max(0, Z(o.rotasFinal) - Z(o.pasRot) - Z(o.motoRot));
+      o.dedPedD = Math.max(0, Z(o.pedRot) - Z(o.pasPed) - Z(o.motoPed));
+      o.perfilTot = Z(o.pp) + Z(o.p) + Z(o.m) + Z(o.g) + Z(o.bulky);
+      ops.push(o);
+    }
+    // hubs: código -> nome mais frequente
+    const hubNames = new Map();
+    for (const o of ops) { if (!o.hub) continue; let m = hubNames.get(o.hub); if (!m) hubNames.set(o.hub, m = new Map()); m.set(o.hubNome, (m.get(o.hubNome) || 0) + 1); }
+    const hubs = new Map();
+    for (const [code, m] of hubNames) {
+      const name = [...m.entries()].sort((a, b) => b[1] - a[1])[0][0];
+      hubs.set(code, { code, name, short: shortHub(name), uf: ufOf(name), names: [...m.keys()] });
+    }
+    const nameToCode = new Map();
+    for (const hb of hubs.values()) for (const nm of hb.names) if (nm) nameToCode.set(nm, hb.code);
+    for (const o of ops) { if (!o.hub && nameToCode.has(o.hubNome)) o.hub = nameToCode.get(o.hubNome); const hb = hubs.get(o.hub); if (hb) { o.uf = hb.uf; o.hubShort = hb.short; } else o.hubShort = shortHub(o.hubNome) || o.hub; }
+
+    // reprocessamentos: mesmo hub+data+ciclo com pedidos planejados ~iguais -> mantém o último
+    const g = groupBy(ops.filter(o => o.hub && o.date), o => o.hub + '|' + o.date + '|' + o.ciclo);
+    for (const arr of g.values()) {
+      if (arr.length < 2) continue;
+      arr.sort((a, b) => (a.dp || '').localeCompare(b.dp || '') || (a.iniMin || 0) - (b.iniMin || 0) || a._i - b._i);
+      for (let i = 0; i < arr.length - 1; i++) {
+        const a = arr[i];
+        for (let j = i + 1; j < arr.length; j++) {
+          const b = arr[j];
+          if (a.pedPlan && b.pedPlan && Math.abs(a.pedPlan - b.pedPlan) / Math.max(a.pedPlan, b.pedPlan) <= 0.01) { a.reproc = b; break; }
+        }
+        a.sameKey = arr.length;
+      }
+      arr[arr.length - 1].sameKey = arr.length;
+    }
+    // ids duplicados -> mantém a última linha
+    const byId = groupBy(ops.filter(o => o.id), o => o.id);
+    for (const arr of byId.values()) if (arr.length > 1) for (let i = 0; i < arr.length - 1; i++) arr[i].dupId = true;
+
+    const dps = ops.map(o => o.dp).filter(Boolean).sort();
+    const today = dps[dps.length - 1] || null;
+    const dxs = ops.map(o => o.date).filter(d => d && (!today || d <= addDays(today, 2))).sort();
+    const versions = [...new Set(ops.map(o => o.versao).filter(v => verKey(v) > 0))].sort((a, b) => verKey(b) - verKey(a));
+    // versão "atual" = a mais nova usada nos últimos 3 dias de processamento
+    const recent = ops.filter(o => o.dp && today && o.dp >= addDays(today, -3) && verKey(o.versao) > 0);
+    // versão de referência = a mais nova com pelo menos 15% das roteirizações dos últimos 3 dias (evita versões em teste)
+    let latest = versions[0];
+    if (recent.length) {
+      const cnt = new Map(); for (const o of recent) cnt.set(o.versao, (cnt.get(o.versao) || 0) + 1);
+      const ok = [...cnt.entries()].filter(([, n]) => n / recent.length >= 0.15).map(([v]) => v).sort((a, b) => verKey(b) - verKey(a));
+      if (ok.length) latest = ok[0];
+    }
+
+    const model = {
+      ops, hubs, nameToCode, missingCols, today,
+      minDate: dxs[0], maxDate: dxs[dxs.length - 1],
+      ciclos: [...new Set(ops.map(o => o.ciclo).filter(Boolean))].sort(),
+      modos: [...new Set(ops.map(o => o.modo).filter(Boolean))].sort(),
+      ufs: [...new Set([...hubs.values()].map(h => h.uf))].filter(u => u !== '—').sort(),
+      analistas: [...new Set(ops.map(o => o.analista).filter(Boolean))].sort(),
+      versions, latestVersion: latest,
+      sup: null, orf: null, sheets: res.sheets, hasOrfaosSheet: res.hasOrfaosSheet,
+    };
+    if (res.suporte) model.sup = buildSup(res.suporte, nameToCode, hubs);
+    if (res.orfaos) model.orf = buildOrf(res.orfaos, nameToCode, hubs);
+    return model;
+  }
+
+  function buildSup(sp, nameToCode, hubs) {
+    const h = sp.header.map(x => S(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
+    const f = n => h.indexOf(n);
+    const c = { quando: f('quando'), versao: f('versao'), maquina: f('maquina'), analista: f('analista'), hub: f('hub'), ciclo: f('ciclo'), data: f('data'), modo: f('modo'), cts: f('cts'), cd: f('ciclo/data'), spr: f('spr'), par: f('parametros'), sit: f('situacao'), det: f('detalhes') };
+    return sp.rows.map(r => {
+      const hubNome = S(r[c.hub]);
+      const code = nameToCode.get(hubNome) || hubNome;
+      const hb = hubs.get(code);
+      return {
+        quando: S(r[c.quando]), quandoIso: toIso(r[c.quando]), versao: S(r[c.versao]), maquina: S(r[c.maquina]), analista: S(r[c.analista]).toLowerCase(),
+        hubNome, hub: code, hubShort: hb ? hb.short : shortHub(hubNome), uf: ufOf(hubNome), ciclo: normCiclo(r[c.ciclo]), date: toIso(r[c.data]), modo: S(r[c.modo]),
+        cts: N(r[c.cts]), cicloData: S(r[c.cd]), spr: S(r[c.spr]), par: S(r[c.par]), sit: S(r[c.sit]).toUpperCase(), det: S(r[c.det]),
+      };
+    }).filter(x => x.hubNome || x.analista);
+  }
+
+  function buildOrf(o, nameToCode, hubs) {
+    const hubCode = o.dict.hub.map(nm => nameToCode.get(nm) || nm);
+    const hubShort = o.dict.hub.map((nm, i) => { const hb = hubs.get(hubCode[i]); return hb ? hb.short : shortHub(nm); });
+    const hubUf = o.dict.hub.map(ufOf);
+    const ciclo = o.dict.ciclo.map(normCiclo);
+    const sitLabel = o.dict.sit.map(s => !s ? 'Sem validação' : /^realocad/i.test(s) ? 'Realocado' : /^n[aã]o roteiriz/i.test(s) ? 'Não roteirizado' : s);
+    const dayIso = new Map();
+    const isoOf = d => { let s = dayIso.get(d); if (!s) { s = d ? serialToIso(d) : null; dayIso.set(d, s); } return s; };
+    return { ...o, hubCode, hubShort, hubUf, cicloN: ciclo, sitLabel, isoOf };
+  }
+
+  // ---------- filtros ----------
+  function filterOps(model, f) {
+    const ex = f.excluirNokExtra;
+    return model.ops.filter(o => {
+      if (!o.date || o.reproc || o.dupId) return false;
+      if (f.from && o.date < f.from) return false;
+      if (f.to && o.date > f.to) return false;
+      if (f.ciclos && f.ciclos.size && !f.ciclos.has(o.ciclo)) return false;
+      if (ex && (o.ciclo === 'NOK' || o.ciclo === 'EXTRA')) return false;
+      if (f.modo && o.modo !== f.modo) return false;
+      if (f.uf && o.uf !== f.uf) return false;
+      if (f.hub && o.hub !== f.hub) return false;
+      if (f.analista && o.analista !== f.analista) return false;
+      return true;
+    });
+  }
+  // para regras de qualidade: período + recortes, mas mantendo duplicados/NOK
+  function filterOpsRaw(model, f) {
+    return model.ops.filter(o => {
+      const d = o.date || o.dp;
+      if (f.from && d && d < f.from) return false;
+      if (f.to && d && d > f.to && !(o.dp && o.dp <= f.to)) return false;
+      if (f.uf && o.uf !== f.uf) return false;
+      if (f.hub && o.hub !== f.hub) return false;
+      if (f.analista && o.analista !== f.analista) return false;
+      return true;
+    });
+  }
+
+  // ---------- agregados ----------
+  function agg(list) {
+    const valid = list.filter(o => o.rotasFinal > 0);
+    const pedRot = sum(valid, o => o.pedRot), rot = sum(valid, o => o.rotasFinal);
+    const pr = valid.filter(o => o.rotasPlan > 0);
+    const pasOk = valid.filter(o => o.pasRot > 0);
+    const motoOk = valid.filter(o => o.motoRot > 0);
+    const tempos = list.map(o => o.tempo).filter(t => t > 0 && t <= 180);
+    const pedPlan = sum(list, o => o.pedPlan);
+    const perfil = sum(list, o => o.perfilTot);
+    const dias = new Set(list.map(o => o.date)).size;
+    const dispOk = valid.filter(o => o.dispTot > 0);
+    return {
+      n: list.length, dias,
+      pedPlan, pedRot, rotas: rot,
+      spr: div(pedRot, rot),
+      sprPlan: div(sum(pr, o => o.pedPlan), sum(pr, o => o.rotasPlan)),
+      sprFinalCmp: div(sum(pr, o => o.pedRot), sum(pr, o => o.rotasFinal)),
+      pasPed: sum(pasOk, o => o.pasPed), pasRot: sum(pasOk, o => o.pasRot),
+      sprPas: div(sum(pasOk, o => o.pasPed), sum(pasOk, o => o.pasRot)),
+      sprPasPlan: div(sum(pasOk.filter(o => o.pasRotP > 0 && o.pasPedP > 0), o => o.pasPedP), sum(pasOk.filter(o => o.pasRotP > 0 && o.pasPedP > 0), o => o.pasRotP)),
+      motoPed: sum(motoOk, o => o.motoPed), motoRot: sum(motoOk, o => o.motoRot),
+      sprMoto: div(sum(motoOk, o => o.motoPed), sum(motoOk, o => o.motoRot)),
+      dedRot: sum(valid, o => o.dedRotD), dedPed: sum(valid, o => o.dedPedD),
+      sprDed: div(sum(valid, o => o.dedPedD), sum(valid, o => o.dedRotD)),
+      vanRot: sum(list, o => o.vanRot), vanPed: sum(list, o => o.vanPed),
+      naoRot: sum(list, o => o.naoRot), naoRotPct: div(sum(list, o => o.naoRot), pedPlan) * 100,
+      baixoAdo: sum(list, o => o.baixoAdo), backlog: sum(list, o => o.backlog),
+      orfIni: sum(list, o => o.orfIni), orfPct: div(sum(list, o => o.orfIni), pedPlan) * 100,
+      orfBulky: sum(list, o => o.orfBulky),
+      pp: sum(list, o => o.pp), p: sum(list, o => o.p), m: sum(list, o => o.m), g: sum(list, o => o.g), bulky: sum(list, o => o.bulky), perfil,
+      bulkyPct: div(sum(list, o => o.bulky), perfil) * 100, gPct: div(sum(list, o => o.g), perfil) * 100,
+      dispTot: sum(dispOk, o => o.dispTot), ocup: div(sum(dispOk, o => o.rotasFinal), sum(dispOk, o => o.dispTot)) * 100,
+      dispFio: sum(list, o => o.dispFio), dispMoto: sum(list, o => o.dispMoto),
+      lhAd: sum(list, o => o.lhAd), lhNao: sum(list, o => o.lhNao),
+      tempoMed: mean(tempos), tempoMediana: median(tempos),
+      justN: list.filter(o => o.just).length,
+    };
+  }
+
+  function daily(list, kf) {
+    const m = groupBy(list, kf || (o => o.date));
+    return [...m.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([k, arr]) => ({ key: k, ...agg(arr) }));
+  }
+
+  function countBy(list, kf) {
+    const m = new Map();
+    for (const o of list) { const k = kf(o); if (k == null || k === '') continue; m.set(k, (m.get(k) || 0) + 1); }
+    return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ key: k, n: v }));
+  }
+
+  function parseClusters(txt) {
+    const out = [];
+    if (!txt) return out;
+    for (const part of String(txt).split('·')) {
+      const m = part.trim().match(/^(.*)\((\d+)\)\s*$/);
+      if (!m) continue;
+      const name = m[1].trim();
+      if (!name || name === '—') continue;
+      out.push([name, +m[2]]);
+    }
+    return out;
+  }
+
+  // ---------- tabela de hubs ----------
+  function hubTable(model, list, opts) {
+    opts = opts || {};
+    const byHub = groupBy(list.filter(o => o.hub), o => o.hub);
+    const dates = [...new Set(list.map(o => o.date))].sort();
+    const last = dates[dates.length - 1];
+    const cut = last ? addDays(last, -6) : null; // últimos 7 dias do período
+    const rows = [];
+    for (const [code, arr] of byHub) {
+      const a = agg(arr);
+      const hb = model.hubs.get(code) || { short: code, name: code, uf: '—' };
+      // variabilidade: CV do SPR passeio diário
+      const d = daily(arr.filter(o => o.pasRot >= 5));
+      const dSpr = d.map(x => x.sprPas).filter(x => x);
+      const cv = dSpr.length >= 4 ? (quantile(dSpr, 0.9) - quantile(dSpr, 0.1)) / median(dSpr) * 100 : null;
+      // SPR "comprovado": nível que o hub já sustentou em dias sem estresse (órfãos e não roteirizados baixos)
+      const bons = d.filter(x => (x.orfPct || 0) <= (opts.orfMax ?? 0.5) && (x.naoRotPct || 0) <= (opts.nrMax ?? 0.5)).map(x => x.sprPas).filter(x => x);
+      const provado = bons.length >= 5 ? median(bons) : null;
+      const recent = arr.filter(o => o.date >= cut), prev = arr.filter(o => o.date < cut);
+      const ar = agg(recent), ap = agg(prev);
+      const just = countBy(arr, o => o.just);
+      const opsPas = arr.filter(o => o.pasRot > 0);
+      const deltaPlan = div(sum(arr.filter(o => o.sprPlan > 0 && o.sprFinal > 0), o => o.sprFinal - o.sprPlan), arr.filter(o => o.sprPlan > 0 && o.sprFinal > 0).length);
+      rows.push({
+        hub: code, nome: hb.short, nomeFull: hb.name, uf: hb.uf,
+        n: a.n, dias: a.dias,
+        pedDia: div(a.pedRot, a.dias), rotasDia: div(a.rotas, a.dias),
+        pasPedDia: div(a.pasPed, a.dias), pasRotDia: div(a.pasRot, a.dias),
+        spr: a.spr, sprPas: a.sprPas, sprPasPlan: a.sprPasPlan, sprMoto: a.sprMoto, sprDed: a.sprDed, sprPlan: a.sprPlan,
+        deltaPlan,
+        motoShare: div(a.motoPed, a.pedRot) * 100, dedShareRot: div(a.dedRot, a.rotas) * 100,
+        motoRotDia: div(a.motoRot, a.dias), dedRotDia: div(a.dedRot, a.dias), vanRotDia: div(a.vanRot, a.dias),
+        dispFioDia: div(a.dispFio, a.n), dispMotoDia: div(a.dispMoto, a.n),
+        bulkyPct: a.bulkyPct, gPct: a.gPct, bulkyDia: div(a.bulky, a.dias), gDia: div(a.g, a.dias),
+        orfPct: a.orfPct, orfDia: div(a.orfIni, a.dias), orfBulkyDia: div(a.orfBulky, a.dias),
+        naoRotPct: a.naoRotPct, naoRotDia: div(a.naoRot, a.dias),
+        ocup: a.ocup, cv, provado, diasBons: bons.length, tempoMed: a.tempoMed,
+        sprPasRecente: ar.sprPas, sprPasAnterior: ap.sprPas, tendencia: ar.sprPas && ap.sprPas ? ar.sprPas - ap.sprPas : null,
+        justPct: div(a.justN, a.n) * 100, justTop: just[0] ? just[0].key : '', justTopPct: just[0] ? just[0].n / a.n * 100 : null,
+        opsPas: opsPas.length,
+      });
+    }
+    return rows;
+  }
+
+  // ---------- regressão (mínimos quadrados ponderados) ----------
+  function wls(X, y, w) {
+    const k = X[0].length; const A = Array.from({ length: k }, () => new Array(k).fill(0)); const b = new Array(k).fill(0);
+    for (let i = 0; i < X.length; i++) for (let p = 0; p < k; p++) { b[p] += w[i] * X[i][p] * y[i]; for (let q = 0; q < k; q++) A[p][q] += w[i] * X[i][p] * X[i][q]; }
+    for (let p = 0; p < k; p++) A[p][p] += 1e-6;
+    // eliminação de Gauss
+    for (let c = 0; c < k; c++) {
+      let piv = c; for (let r = c + 1; r < k; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r;
+      [A[c], A[piv]] = [A[piv], A[c]]; [b[c], b[piv]] = [b[piv], b[c]];
+      for (let r = 0; r < k; r++) { if (r === c) continue; const f = A[r][c] / A[c][c]; for (let q = c; q < k; q++) A[r][q] -= f * A[c][q]; b[r] -= f * b[c]; }
+    }
+    return b.map((v, i) => v / A[i][i]);
+  }
+
+  const DEFAULT_PARAMS = { minDias: 5, gap: 6, orfMax: 0.5, nrMax: 0.5, alertaOrf: 1.0, alertaNr: 1.0, passoMax: 8, cvMax: 30 };
+
+  function sprRecommend(rows, params) {
+    const P = { ...DEFAULT_PARAMS, ...(params || {}) };
+    const base = rows.filter(r => r.dias >= P.minDias && r.sprPas > 0 && r.pasPedDia > 0 && r.bulkyPct != null);
+    let coef = null, r2 = null;
+    const feats = r => [1, r.bulkyPct, r.gPct || 0, r.motoShare || 0, Math.log(r.pasPedDia)];
+    if (base.length >= 12) {
+      const X = base.map(feats), y = base.map(r => r.sprPas), w = base.map(r => Math.sqrt(r.dias));
+      coef = wls(X, y, w);
+      const yh = X.map(x => x.reduce((s, v, i) => s + v * coef[i], 0));
+      const ym = mean(y); const ssr = y.reduce((s, v, i) => s + (v - yh[i]) ** 2, 0), sst = y.reduce((s, v) => s + (v - ym) ** 2, 0);
+      r2 = 1 - ssr / sst;
+    }
+    // referência por UF (mediana SPR passeio)
+    const byUf = groupBy(base, r => r.uf);
+    const ufMed = new Map([...byUf].map(([u, a]) => [u, a.length >= 3 ? median(a.map(r => r.sprPas)) : null]));
+    const bulkyP75 = quantile(base.map(r => r.bulkyPct), 0.75);
+    const out = rows.map(r => {
+      const o = { ...r, esperado: null, resid: null, rec: 'sem dados', motivos: [], alvo: null, impactoRotasDia: null, score: 0 };
+      if (!(r.dias >= P.minDias && r.sprPas > 0)) { o.motivos.push(`Poucos dias no período (${r.dias}); mínimo ${P.minDias}.`); return o; }
+      if (coef) { o.esperado = feats(r).reduce((s, v, i) => s + v * coef[i], 0); o.resid = r.sprPas - o.esperado; }
+      o.ufMed = ufMed.get(r.uf);
+      const folga = (r.orfPct || 0) <= P.orfMax && (r.naoRotPct || 0) <= P.nrMax;
+      const alerta = (r.orfPct || 0) >= P.alertaOrf || (r.naoRotPct || 0) >= P.alertaNr;
+      const passo = P.passoMax / 100;
+      const f1 = v => v == null ? '—' : v.toFixed(1).replace('.', ',');
+      const f0 = v => v == null ? '—' : Math.round(v).toString();
+      const abaixoPerfil = o.resid != null && o.resid <= -P.gap;
+      const abaixoProvado = r.provado != null && r.sprPas <= r.provado - P.gap;
+      if ((abaixoPerfil || abaixoProvado) && folga) {
+        o.rec = 'subir';
+        const ref = Math.max(abaixoPerfil ? o.esperado : 0, abaixoProvado ? r.provado : 0);
+        o.alvo = Math.min(ref, r.sprPas * (1 + passo));
+        o.impactoRotasDia = r.pasPedDia / o.alvo - r.pasPedDia / r.sprPas; // negativo = economia
+        o.score = Math.max(-(o.resid || 0), abaixoProvado ? r.provado - r.sprPas : 0);
+        if (abaixoProvado) o.motivos.push(`Em dias com poucos órfãos e quase nenhum pedido fora de rota, o hub já rodou com SPR passeio ${f0(r.provado)} (atual ${f0(r.sprPas)}).`);
+        if (abaixoPerfil) o.motivos.push(`SPR passeio ${f0(r.sprPas)} contra ${f0(o.esperado)} de referência para o perfil do hub (${f1(o.resid)}).`);
+        o.motivos.push(`Órfãos ${f1(r.orfPct)}% e não roteirizados ${f1(r.naoRotPct)}%: há margem para carregar mais as rotas.`);
+      } else if (alerta && (o.resid == null || o.resid >= -P.gap / 2)) {
+        o.rec = 'baixar';
+        o.alvo = r.sprPas * (1 - Math.min(passo, Math.max(0.02, ((r.orfPct || 0) + (r.naoRotPct || 0)) / 100)));
+        o.impactoRotasDia = r.pasPedDia / o.alvo - r.pasPedDia / r.sprPas;
+        o.score = (r.orfPct || 0) + (r.naoRotPct || 0) + Math.max(0, o.resid || 0) / 5;
+        o.motivos.push(`Órfãos ${f1(r.orfPct)}% e não roteirizados ${f1(r.naoRotPct)}% dos pedidos: as rotas não estão absorvendo o volume.`);
+        if (o.resid != null) o.motivos.push(`SPR passeio ${f0(r.sprPas)} ${o.resid >= 0 ? 'acima' : 'perto'} do esperado (${f0(o.esperado)}).`);
+        if (r.bulkyPct >= bulkyP75) o.motivos.push(`Perfil pesado: ${f1(r.bulkyPct)}% bulky (entre os 25% maiores).`);
+      } else if (o.resid != null && o.resid >= P.gap && r.bulkyPct >= bulkyP75 && (r.orfPct || 0) > P.orfMax) {
+        o.rec = 'baixar';
+        o.alvo = Math.max(o.esperado, r.sprPas * (1 - passo));
+        o.impactoRotasDia = r.pasPedDia / o.alvo - r.pasPedDia / r.sprPas;
+        o.score = o.resid / 5;
+        o.motivos.push(`SPR passeio ${f0(r.sprPas)} acima do esperado (${f0(o.esperado)}) com perfil pesado (${f1(r.bulkyPct)}% bulky) e órfãos em ${f1(r.orfPct)}%.`);
+      } else if (r.cv != null && r.cv >= P.cvMax) {
+        o.rec = 'revisar';
+        o.score = r.cv / 10;
+        o.motivos.push(`SPR passeio oscila muito entre os dias (faixa de ${f0(r.cv)}% em torno da mediana). Vale revisar template e parâmetros.`);
+      } else {
+        o.rec = 'manter';
+        o.motivos.push(o.resid != null ? `SPR passeio ${f0(r.sprPas)} dentro do esperado (${f0(o.esperado)}).` : `SPR passeio ${f0(r.sprPas)}.`);
+      }
+      if (r.justTop && r.justTopPct >= 20) o.motivos.push(`Justificativa mais usada: “${r.justTop}” (${f0(r.justTopPct)}% das roteirizações).`);
+      if (r.tendencia != null && Math.abs(r.tendencia) >= 4) o.motivos.push(`Últimos 7 dias: SPR passeio ${r.tendencia > 0 ? 'subiu' : 'caiu'} ${f1(Math.abs(r.tendencia))} contra o período anterior.`);
+      if (r.ocup != null && o.rec === 'baixar') o.motivos.push(`Uso da disponibilidade: ${f0(r.ocup)}% das rotas disponíveis${r.ocup < 80 ? ' (há veículo para rotas extras)' : ' (pouca folga de veículos)'}.`);
+      return o;
+    });
+    return { rows: out, coef, r2, n: base.length, bulkyP75, params: P };
+  }
+
+  // ---------- modal & vans ----------
+  function modal(rows) {
+    const base = rows.filter(r => r.dias >= 3);
+    const p75b = quantile(base.map(r => r.bulkyDia || 0), 0.75);
+    const p75o = quantile(base.map(r => r.orfBulkyDia || 0), 0.75);
+    return rows.map(r => {
+      const motivos = [];
+      let flag = '';
+      if ((r.bulkyDia || 0) >= p75b && (r.vanRotDia || 0) < 0.5) {
+        flag = 'candidato a van';
+        motivos.push('Muito bulky por dia e nenhuma rota de van.');
+        if ((r.orfBulkyDia || 0) >= p75o && p75o > 0) motivos.push('Bulky também lidera os órfãos.');
+      } else if ((r.orfBulkyDia || 0) >= p75o && p75o > 0) {
+        flag = 'atenção volumoso';
+        motivos.push('Órfãos bulky acima do normal.');
+      }
+      return { ...r, flagModal: flag, motivosModal: motivos.join(' '), pedPorDed: r.sprDed };
+    });
+  }
+
+  // ---------- órfãos (aba Órfãos) ----------
+  function orfaos(model, f) {
+    const o = model.orf; if (!o) return null;
+    const fromS = f.from ? isoToSerial(f.from) : -Infinity, toS = f.to ? isoToSerial(f.to) : Infinity;
+    const maxS = model.today ? isoToSerial(addDays(model.today, 2)) : Infinity;
+    const cic = f.ciclos && f.ciclos.size ? f.ciclos : null;
+    const byDay = new Map(), byHub = new Map(), byCat = new Map(), byCic = new Map(), bySit = new Map(), byClu = new Map();
+    let n = 0, uniq = 0, vol = 0, excl = 0;
+    const add = (m, k, v, extra) => { let e = m.get(k); if (!e) m.set(k, e = { key: k, n: 0, vol: 0, real: 0, nr: 0, sv: 0, bulky: 0, ...extra }); e.n++; e.vol += v; return e; };
+    for (let i = 0; i < o.n; i++) {
+      const d = o.day[i];
+      if (o.vol[i] > 5000 || d > maxS || d <= 0) { excl++; continue; }
+      if (d < fromS || d > toS) continue;
+      if (o.dup[i]) continue; // pedido x dia x hub único
+      const h = o.hub[i];
+      if (f.hub && o.hubCode[h] !== f.hub) continue;
+      if (f.uf && o.hubUf[h] !== f.uf) continue;
+      const c = o.cicloN[o.cic[i]];
+      if (cic && !cic.has(c)) continue;
+      const v = o.vol[i]; const sit = o.sitLabel[o.sit[i]]; const cat = o.dict.cat[o.cat[i]] || '—';
+      n++; vol += v;
+      const tag = e => { if (sit === 'Realocado') e.real++; else if (sit === 'Não roteirizado') e.nr++; else e.sv++; if (cat === 'Bulky') { e.bulky++; e.volBulky = (e.volBulky || 0) + v; } };
+      tag(add(byDay, d, v)); const he = add(byHub, h, v, { hub: o.hubCode[h], nome: o.hubShort[h], uf: o.hubUf[h], dias: new Set() }); tag(he); he.dias.add(d);
+      tag(add(byCat, cat, v)); tag(add(byCic, c, v)); add(bySit, sit, v);
+      const ck = h + '|' + o.clu[i]; const ce = add(byClu, ck, v, { nome: o.hubShort[h], hub: o.hubCode[h], cluster: o.dict.cluster[o.clu[i]] || '—', dias: new Set() }); tag(ce); ce.dias.add(d);
+    }
+    const fin = m => [...m.values()].map(e => { if (e.dias) e.nDias = e.dias.size; delete e.dias; return e; });
+    const days = fin(byDay).sort((a, b) => a.key - b.key).map(e => ({ ...e, iso: serialToIso(e.key) }));
+    return {
+      n, vol, excl, litrosPorPed: div(vol, n),
+      days, hubs: fin(byHub).sort((a, b) => b.n - a.n), cats: fin(byCat).sort((a, b) => b.n - a.n),
+      ciclos: fin(byCic).sort((a, b) => b.n - a.n), sits: fin(bySit).sort((a, b) => b.n - a.n), clusters: fin(byClu).sort((a, b) => b.n - a.n),
+    };
+  }
+
+  // órfãos por hub+data (para cruzar com SPR)
+  function orfByHubDay(model, f) {
+    const o = model.orf; if (!o) return null;
+    const m = new Map();
+    for (let i = 0; i < o.n; i++) {
+      if (o.dup[i] || o.vol[i] > 5000) continue;
+      const k = o.hubCode[o.hub[i]] + '|' + serialToIso(o.day[i]);
+      let e = m.get(k); if (!e) m.set(k, e = { n: 0, vol: 0, bulky: 0 }); e.n++; e.vol += o.vol[i]; if (o.dict.cat[o.cat[i]] === 'Bulky') e.bulky++;
+    }
+    return m;
+  }
+
+  // ---------- qualidade do ROFI ----------
+  const OBRIG = [['hub', 'Hub'], ['analista', 'Analista'], ['ciclo', 'Ciclo'], ['modo', 'Modo'], ['fonte', 'Fonte LH'], ['versao', 'Versão'], ['ini', 'Início'], ['fim', 'Fim'], ['id', 'ID'], ['dx', 'Data expedição'], ['pedPlan', 'Pedidos planejados'], ['rotasFinal', 'Rotas final'], ['sprFinal', 'SPR final']];
+  const CICLOS_OK = new Set(['AM', 'PM1', 'PM2', 'AM-1', 'EXTRA']);
+  function quality(model, list, P) {
+    P = { tempoMax: 180, sprMin: 40, sprMax: 200, quedaJust: 5, ...(P || {}) };
+    const latestK = verKey(model.latestVersion);
+    const rules = [
+      { id: 'vazio', label: 'Campo obrigatório vazio', sev: 'alta', desc: 'Hub, analista, ciclo, modo, fonte LH, versão, início, fim, ID, data de expedição, pedidos, rotas ou SPR em branco.',
+        test: o => { const f = OBRIG.filter(([k]) => o[k] == null || o[k] === '').map(x => x[1]); return f.length ? f.join(', ') : null; } },
+      { id: 'ciclo', label: 'Ciclo inválido (NOK ou fora do padrão)', sev: 'alta', desc: 'Ciclo diferente de AM, PM1, PM2, AM-1 ou EXTRA.', test: o => o.ciclo && !CICLOS_OK.has(o.ciclo) ? `Ciclo “${o.cicloRaw}”` : null },
+      { id: 'tempo', label: 'Tempo de roteirização fora do padrão', sev: 'media', desc: `Tempo zerado, negativo ou acima de ${P.tempoMax} min (app aberto, fim não registrado).`, test: o => o.tempo != null && (o.tempo <= 0 || o.tempo > P.tempoMax) ? `${Math.round(o.tempo)} min` : null },
+      { id: 'datas', label: 'Data de expedição incoerente', sev: 'alta', desc: 'Expedição antes do processamento ou mais de 2 dias depois.', test: o => { if (!o.dp || !o.dx) return null; const d = dayDiff(o.dp, o.dx); return d < 0 || d > 2 ? `processado ${fmtD(o.dp)}, expedição ${fmtD(o.dx)}` : null; } },
+      { id: 'repetida', label: 'Roteirização repetida', sev: 'media', desc: 'Mesmo hub, data e ciclo registrados mais de uma vez (reprocessamento ou data trocada).', test: o => o.sameKey > 1 ? (o.reproc ? 'reprocessada depois (linha ignorada nas análises)' : `${o.sameKey} registros no mesmo hub/data/ciclo`) : null },
+      { id: 'iddup', label: 'ID duplicado', sev: 'media', desc: 'O mesmo ID de roteirização aparece mais de uma vez.', test: o => o.dupId ? o.id : null },
+      { id: 'spr', label: 'SPR fora da faixa', sev: 'media', desc: `SPR final abaixo de ${P.sprMin} ou acima de ${P.sprMax} (exceto EXTRA).`, test: o => o.sprFinal != null && o.ciclo !== 'EXTRA' && (o.sprFinal < P.sprMin || o.sprFinal > P.sprMax) ? `SPR ${o.sprFinal}` : null },
+      { id: 'semjust', label: 'SPR caiu sem justificativa', sev: 'media', desc: `SPR final ${P.quedaJust}+ abaixo do planejado sem justificativa preenchida.`, test: o => o.sprPlan > 0 && o.sprFinal > 0 && o.sprPlan - o.sprFinal >= P.quedaJust && !o.just ? `${o.sprPlan} → ${o.sprFinal}` : null },
+      { id: 'rotmaior', label: 'Roteirizados acima do planejado', sev: 'baixa', desc: 'Pedidos roteirizados maiores que os planejados (+1%). Pode ser backlog incluído depois.', test: o => o.pedRot > 0 && o.pedPlan > 0 && o.pedRot > o.pedPlan * 1.01 ? `${fmtN(o.pedRot)} de ${fmtN(o.pedPlan)}` : null },
+      { id: 'disp', label: 'Mais rotas do que disponibilidade', sev: 'baixa', desc: 'Rotas finais acima da disponibilidade total informada.', test: o => o.dispTot > 0 && o.rotasFinal > o.dispTot ? `${o.rotasFinal} rotas, ${o.dispTot} disp.` : null },
+      { id: 'clock', label: 'Rout não finalizada pelo Fluxo', sev: 'media', desc: 'Origem RoutingClock: o Fluxo não fechou a roteirização.', test: o => /routingclock/i.test(o.origem) || /routingclock/i.test(o.versao) ? (o.origem || o.versao) : null },
+      { id: 'versao', label: 'Versão do Fluxo desatualizada', sev: 'baixa', desc: `Versão abaixo da ${model.latestVersion || 'atual'} (a mais nova em uso nos últimos 3 dias).`, test: o => { const k = verKey(o.versao); return k > 0 && latestK > 0 && k < latestK && o.dp && model.today && o.dp >= addDays(model.today, -3) ? o.versao : null; } },
+      { id: 'nomehub', label: 'Nome de hub fora do padrão', sev: 'baixa', desc: 'Nome do hub diferente do mais usado para o mesmo código, ou sem o prefixo “LM Hub_”.', test: o => { const hb = model.hubs.get(o.hub); if (!o.hubNome) return null; if (!/^LM Hub_/.test(o.hubNome)) return o.hubNome; return hb && hb.name !== o.hubNome ? `${o.hubNome} (padrão: ${hb.name})` : null; } },
+    ];
+    const res = rules.map(r => ({ ...r, rows: [] }));
+    const byAnalyst = new Map();
+    const opsWithError = new Set();
+    for (const o of list) {
+      let any = false;
+      for (const r of res) {
+        const d = r.test(o);
+        if (d) { r.rows.push({ o, detalhe: d }); any = true; const a = o.analista || '(sem analista)'; let e = byAnalyst.get(a); if (!e) byAnalyst.set(a, e = { analista: a, erros: 0, ops: 0, porRegra: {} }); e.erros++; e.porRegra[r.id] = (e.porRegra[r.id] || 0) + 1; }
+      }
+      if (any) opsWithError.add(o);
+    }
+    for (const o of list) { const a = o.analista || '(sem analista)'; let e = byAnalyst.get(a); if (!e) byAnalyst.set(a, e = { analista: a, erros: 0, ops: 0, porRegra: {} }); e.ops++; }
+    const analysts = [...byAnalyst.values()].map(e => ({ ...e, opsComErro: list.filter(o => (o.analista || '(sem analista)') === e.analista && opsWithError.has(o)).length })).map(e => ({ ...e, pct: e.opsComErro / e.ops * 100 })).sort((a, b) => b.erros - a.erros);
+    return { rules: res.map(r => { delete r.test; return r; }), analysts, total: list.length, comErro: opsWithError.size };
+  }
+
+  // ---------- analistas ----------
+  function analysts(model, list, qual) {
+    const by = groupBy(list.filter(o => o.analista), o => o.analista);
+    const errMap = new Map((qual ? qual.analysts : []).map(e => [e.analista, e]));
+    const latestK = verKey(model.latestVersion);
+    return [...by.entries()].map(([a, arr]) => {
+      const g = agg(arr);
+      const vers = arr.slice().sort((x, y) => (y.dp || '').localeCompare(x.dp || ''));
+      const ult = vers[0] ? vers[0].versao : '';
+      const e = errMap.get(a);
+      return {
+        analista: a, n: g.n, dias: g.dias, hubs: new Set(arr.map(o => o.hub)).size, opsDia: div(g.n, g.dias),
+        tempoMed: g.tempoMed, tempoMediana: g.tempoMediana, spr: g.spr, sprPas: g.sprPas,
+        pedidos: g.pedRot, ultVersao: ult, desatualizado: verKey(ult) > 0 && latestK > 0 && verKey(ult) < latestK,
+        justPct: div(g.justN, g.n) * 100, errosPct: e ? e.pct : 0, erros: e ? e.erros : 0,
+        ultimaData: vers[0] ? vers[0].dp : null,
+      };
+    }).sort((a, b) => b.n - a.n);
+  }
+
+  // ---------- suporte ----------
+  function suporte(model, f) {
+    if (!model.sup) return null;
+    const list = model.sup.filter(s => {
+      const d = s.date || s.quandoIso;
+      if (f.from && d && d < f.from) return false;
+      if (f.to && d && d > f.to) return false;
+      if (f.uf && s.uf !== f.uf) return false;
+      if (f.hub && s.hub !== f.hub) return false;
+      if (f.analista && s.analista !== f.analista) return false;
+      return true;
+    });
+    const parCat = p => !p ? '—' : /^ok/i.test(p) ? 'OK' : /fora do padr/i.test(p) ? 'Fora do padrão' : /aguard/i.test(p) ? 'Aguardando' : /n[aã]o conferid/i.test(p) ? 'Não conferido' : 'Outros';
+    const hubCount = new Map();
+    for (const s of list) { let e = hubCount.get(s.hub); if (!e) hubCount.set(s.hub, e = { hub: s.hub, nome: s.hubShort, uf: s.uf, n: 0, div: 0, agu: 0, fora: 0 }); e.n++; if (s.sit === 'DIVERGÊNCIA' || s.sit === 'DIVERGENCIA') e.div++; if (/AGUARD/.test(s.sit)) e.agu++; if (parCat(s.par) === 'Fora do padrão') e.fora++; }
+    return {
+      list, n: list.length,
+      sit: countBy(list, s => s.sit || '—'), par: countBy(list, s => parCat(s.par)), versao: countBy(list, s => s.versao),
+      cicloData: countBy(list, s => s.cicloData || '—'), spr: countBy(list, s => s.spr || '—'),
+      hubs: [...hubCount.values()].sort((a, b) => b.div - a.div || b.n - a.n),
+      analistas: countBy(list, s => s.analista),
+      divergencias: list.filter(s => /DIVERG/.test(s.sit) || parCat(s.par) === 'Fora do padrão'),
+    };
+  }
+
+
+  // ---------- semana × semana ----------
+  const WD = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'];
+  const weekdayOf = isoDate => (new Date(isoDate + 'T00:00:00Z').getUTCDay() + 6) % 7;
+  const weekStart = isoDate => addDays(isoDate, -weekdayOf(isoDate));
+  function weeks(model) {
+    const set = new Set();
+    for (const o of model.ops) if (o.date && !o.reproc && !o.dupId && o.date <= model.maxDate) set.add(weekStart(o.date));
+    return [...set].sort().reverse().map(st => ({ start: st, end: addDays(st, 6) }));
+  }
+  // ignora roteirizações com SPR impossível (erro de preenchimento), que distorcem a comparação
+  const okSpr = (p, r) => r > 0 && p / r >= 5 && p / r <= 400;
+  const metricFn = metric => metric === 'passeio' ? (o => okSpr(o.pasPed || 0, o.pasRot) ? [o.pasPed, o.pasRot] : null) : (o => okSpr(o.pedRot || 0, o.rotasFinal) ? [o.pedRot, o.rotasFinal] : null);
+  function segTotals(list, segs) {
+    const m = new Map(); let P = 0, R = 0;
+    for (const o of list) for (const [k, p, r] of segs(o)) { if (!(r > 0)) continue; let e = m.get(k); if (!e) m.set(k, e = { key: k, P: 0, R: 0, n: 0 }); e.P += p; e.R += r; e.n++; P += p; R += r; }
+    return { m, P, R, spr: R ? P / R : null };
+  }
+  // contribuição de cada parte para a variação: "e se essa parte tivesse mantido o SPR da semana anterior?"
+  function contributions(cur, prev, segs) {
+    const C = segTotals(cur, segs), Pv = segTotals(prev, segs);
+    if (!C.R || !Pv.R) return { sprCur: C.spr, sprPrev: Pv.spr, delta: null, parts: [], mix: null };
+    const parts = [];
+    for (const e of C.m.values()) {
+      const pe = Pv.m.get(e.key);
+      const sprC = e.P / e.R;
+      let contrib = null, sprP = null;
+      if (pe && pe.R > 0 && pe.P > 0) { sprP = pe.P / pe.R; const R2 = C.R - e.R + e.P / sprP; contrib = C.P / C.R - C.P / R2; }
+      parts.push({ key: e.key, sprCur: sprC, sprPrev: sprP, pCur: e.P, rCur: e.R, pPrev: pe ? pe.P : 0, rPrev: pe ? pe.R : 0, shareCur: e.R / C.R * 100, sharePrev: pe ? pe.R / Pv.R * 100 : 0, contrib, novo: !pe });
+    }
+    for (const pe of Pv.m.values()) if (!C.m.has(pe.key)) parts.push({ key: pe.key, sprCur: null, sprPrev: pe.P / pe.R, pCur: 0, rCur: 0, pPrev: pe.P, rPrev: pe.R, shareCur: 0, sharePrev: pe.R / Pv.R * 100, contrib: null, sumiu: true });
+    const delta = C.spr - Pv.spr;
+    const sumC = parts.reduce((s2, x) => s2 + (x.contrib || 0), 0);
+    return { sprCur: C.spr, sprPrev: Pv.spr, delta, parts: parts.sort((a, b) => (a.contrib ?? 0) - (b.contrib ?? 0)), mix: delta - sumC };
+  }
+  const one = (M, kf) => o => { const m = M(o); return m ? [[kf(o), m[0], m[1]]] : []; };
+  const modalSegs = o => okSpr(o.pedRot || 0, o.rotasFinal) ? [['Passeio', o.pasPed || 0, o.pasRot || 0], ['Moto', o.motoPed || 0, o.motoRot || 0], ['Dedicadas', o.dedPedD || 0, o.dedRotD || 0]] : [];
+
+  function weekWindows(model, mode, weekStartIso) {
+    if (mode === 'rolling') { const to = model.maxDate; const from = addDays(to, -6); return { cur: [from, to], prev: [addDays(from, -7), addDays(to, -7)] }; }
+    const st = weekStartIso; return { cur: [st, addDays(st, 6)], prev: [addDays(st, -7), addDays(st, -1)] };
+  }
+
+  function weekCompare(model, f, opts) {
+    const { cur, prev } = weekWindows(model, opts.mode, opts.week);
+    const base = { ...f, hub: '', analista: f.analista };
+    const L1 = filterOps(model, { ...base, from: cur[0], to: cur[1] });
+    const L0 = filterOps(model, { ...base, from: prev[0], to: prev[1] });
+    const M = metricFn(opts.metric);
+    const net = contributions(L1, L0, one(M, o => o.hub));
+    const g1 = groupBy(L1.filter(o => o.hub), o => o.hub), g0 = groupBy(L0.filter(o => o.hub), o => o.hub);
+    const netByHub = new Map(net.parts.map(p => [p.key, p.contrib]));
+    const rows = [];
+    for (const code of new Set([...g1.keys(), ...g0.keys()])) {
+      const a1 = g1.get(code) || [], a0 = g0.get(code) || [];
+      const s1 = segTotals(a1, one(M, () => 1)), s0 = segTotals(a0, one(M, () => 1));
+      const hb = model.hubs.get(code) || { short: code, uf: '—' };
+      const d1 = new Set(a1.map(o => o.date)).size, d0 = new Set(a0.map(o => o.date)).size;
+      const A1 = agg(a1), A0 = agg(a0);
+      const row = {
+        hub: code, nome: hb.short, uf: hb.uf, sprPrev: s0.spr, sprCur: s1.spr, delta: s1.spr != null && s0.spr != null ? s1.spr - s0.spr : null,
+        diasCur: d1, diasPrev: d0, pedDiaCur: d1 ? A1.pedRot / d1 : null, pedDiaPrev: d0 ? A0.pedRot / d0 : null,
+        rotasDiaCur: d1 ? A1.rotas / d1 : null, rotasDiaPrev: d0 ? A0.rotas / d0 : null,
+        planCur: opts.metric === 'passeio' ? A1.sprPasPlan : A1.sprPlan, planPrev: opts.metric === 'passeio' ? A0.sprPasPlan : A0.sprPlan,
+        impactoRede: netByHub.get(code) ?? null,
+      };
+      // rotas a mais (ou a menos) por dia por causa da variação de SPR, no volume da semana atual
+      const pdM = d1 && s1.P ? s1.P / d1 : null;
+      row.rotasExtraDia = pdM && s1.spr && s0.spr ? pdM / s1.spr - pdM / s0.spr : null;
+      if (row.delta != null && row.delta < 0) row.drivers = hubDrivers(a1, a0, opts.metric, A1, A0).top;
+      rows.push(row);
+    }
+    return { cur, prev, net, rows, nCur: L1.length, nPrev: L0.length, L1, L0 };
+  }
+
+  function hubDrivers(a1, a0, metric, A1, A0) {
+    const M = metricFn(metric);
+    const f1 = v => v == null ? '—' : v.toFixed(1).replace('.', ',');
+    const f0 = v => v == null ? '—' : Math.round(v).toString();
+    const pts = v => (v > 0 ? '+' : '−') + Math.abs(v).toFixed(1).replace('.', ',') + ' pts';
+    const byCiclo = contributions(a1, a0, one(M, o => o.ciclo));
+    const byModal = metric === 'passeio' ? null : contributions(a1, a0, modalSegs);
+    const byDay = contributions(a1, a0, one(M, o => weekdayOf(o.date)));
+    const byAn = contributions(a1, a0, one(M, o => o.analista || '—'));
+    const cands = [];
+    const add = (pts_, txt, tipo) => { if (pts_ != null && pts_ <= -0.5) cands.push({ pts: pts_, txt, tipo }); };
+    for (const p of byCiclo.parts) if (p.contrib != null) add(p.contrib, `Ciclo ${p.key}: SPR ${f0(p.sprPrev)} → ${f0(p.sprCur)} (${pts(p.contrib)})`, 'ciclo');
+    if (byModal) {
+      for (const p of byModal.parts) if (p.contrib != null) add(p.contrib, `${p.key}: SPR ${f0(p.sprPrev)} → ${f0(p.sprCur)} (${pts(p.contrib)})`, 'modal');
+      if (byModal.mix != null && byModal.mix <= -0.5) {
+        const big = byModal.parts.filter(p => p.key !== 'Passeio').sort((a, b) => (b.shareCur - b.sharePrev) - (a.shareCur - a.sharePrev))[0];
+        const why = big && big.shareCur - big.sharePrev >= 1 ? `: ${big.key.toLowerCase()} passaram de ${f0(big.sharePrev)}% para ${f0(big.shareCur)}% das rotas` : '';
+        add(byModal.mix, `Mudança no mix de modal${why} (${pts(byModal.mix)})`, 'mix');
+      }
+    }
+    for (const p of byDay.parts) if (p.contrib != null) add(p.contrib, `${WD[p.key]}: SPR ${f0(p.sprPrev)} → ${f0(p.sprCur)} (${pts(p.contrib)})`, 'dia');
+    for (const p of byAn.parts) if (p.contrib != null) add(p.contrib, `Analista ${String(p.key).replace(/@.*/, '')}: SPR ${f0(p.sprCur)} contra ${f0(p.sprPrev)} na semana anterior (${pts(p.contrib)})`, 'analista');
+    // um por tipo, os 3 maiores
+    const seen = new Set(); const top = [];
+    for (const c of cands.sort((a, b) => a.pts - b.pts)) { if (seen.has(c.tipo) && c.tipo !== 'ciclo') continue; seen.add(c.tipo); top.push(c.txt); if (top.length >= 3) break; }
+    // contexto
+    const ctx = [];
+    const d1 = new Set(a1.map(o => o.date)).size, d0 = new Set(a0.map(o => o.date)).size;
+    const pd1 = d1 ? A1.pedRot / d1 : null, pd0 = d0 ? A0.pedRot / d0 : null;
+    if (pd1 && pd0 && Math.abs(pd1 / pd0 - 1) >= 0.1) ctx.push(`Pedidos por dia ${pd1 > pd0 ? 'subiram' : 'caíram'} ${f0(Math.abs(pd1 / pd0 - 1) * 100)}% (${f0(pd0)} → ${f0(pd1)}).`);
+    const pl1 = metric === 'passeio' ? A1.sprPasPlan : A1.sprPlan, pl0 = metric === 'passeio' ? A0.sprPasPlan : A0.sprPlan;
+    if (pl1 && pl0 && pl1 - pl0 <= -3) ctx.push(`O SPR planejado também caiu (${f0(pl0)} → ${f0(pl1)}): indica mudança de template ou parâmetro, não só execução.`);
+    if (A1.bulkyPct != null && A0.bulkyPct != null && A1.bulkyPct - A0.bulkyPct >= 1) ctx.push(`Mais bulky: ${f1(A0.bulkyPct)}% → ${f1(A1.bulkyPct)}% dos pacotes.`);
+    if ((A1.orfPct || 0) - (A0.orfPct || 0) >= 0.5) ctx.push(`Órfãos subiram: ${f1(A0.orfPct)}% → ${f1(A1.orfPct)}%.`);
+    if ((A1.naoRotPct || 0) - (A0.naoRotPct || 0) >= 0.5) ctx.push(`Não roteirizados subiram: ${f1(A0.naoRotPct)}% → ${f1(A1.naoRotPct)}%.`);
+    return { top, ctx, byCiclo, byModal, byDay, byAn };
+  }
+
+  function weekHubDetail(model, wk, code, metric) {
+    const a1 = wk.L1.filter(o => o.hub === code), a0 = wk.L0.filter(o => o.hub === code);
+    const A1 = agg(a1), A0 = agg(a0);
+    const dr = hubDrivers(a1, a0, metric, A1, A0);
+    const M = metricFn(metric);
+    const byWd = (list) => { const arr = Array.from({ length: 7 }, () => ({ P: 0, R: 0 })); for (const o of list) { const m = M(o); if (!m) continue; const w = weekdayOf(o.date); arr[w].P += m[0]; arr[w].R += m[1]; } return arr.map(x => x.R ? x.P / x.R : null); };
+    // referência por ciclo da semana anterior para cada roteirização
+    const refC = new Map(dr.byCiclo.parts.map(p => [p.key, p.sprPrev]));
+    const ops = a1.map(o => { const m = M(o); const spr = m ? m[0] / m[1] : null; const ref = refC.get(o.ciclo); return { o, spr, ref, dif: spr != null && ref != null ? spr - ref : null }; });
+    const just = countBy(a1, o => o.just);
+    const clus = new Map(); for (const o of a1) for (const [nm, n] of parseClusters(o.orfClusters)) clus.set(nm, (clus.get(nm) || 0) + n);
+    return { a1, a0, A1, A0, dr, wd1: byWd(a1), wd0: byWd(a0), ops, just, clusters: [...clus.entries()].sort((a, b) => b[1] - a[1]) };
+  }
+
+  const fmtD = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—';
+  const fmtN = v => v == null ? '—' : Math.round(v).toLocaleString('pt-BR');
+
+  return { weeks, weekCompare, weekHubDetail, WD, weekdayOf, build, filterOps, filterOpsRaw, agg, daily, countBy, parseClusters, hubTable, sprRecommend, modal, orfaos, orfByHubDay, quality, analysts, suporte, DEFAULT_PARAMS, addDays, dayDiff, verKey, median, quantile, mean, groupBy, fmtD, serialToIso, isoToSerial };
+})();
+if (typeof module !== 'undefined') module.exports = Core;
+</script>
+<script>// ROFI Analyzer — interface
+(() => {
+  const $ = s => document.querySelector(s);
+  const main = $('#main');
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem('rofi.' + k); return v == null ? d : JSON.parse(v); } catch (_) { return d; } },
+    set(k, v) { try { localStorage.setItem('rofi.' + k, JSON.stringify(v)); } catch (_) {} },
+  };
+
+  // ---------- helpers de DOM e formato ----------
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      const v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'html') el.innerHTML = v;
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const c of kids.flat(Infinity)) { if (c == null || c === false) continue; el.append(c.nodeType ? c : String(c)); }
+    return el;
+  }
+  const svgNS = 'http://www.w3.org/2000/svg';
+  function s(tag, attrs, ...kids) { const el = document.createElementNS(svgNS, tag); for (const k in attrs || {}) if (attrs[k] != null) el.setAttribute(k, attrs[k]); for (const c of kids.flat()) if (c != null) el.append(c.nodeType ? c : document.createTextNode(String(c))); return el; }
+  const nf0 = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+  const nf1 = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const F = {
+    n0: v => v == null || !isFinite(v) ? '—' : nf0.format(v),
+    n1: v => v == null || !isFinite(v) ? '—' : nf1.format(v),
+    pct: v => v == null || !isFinite(v) ? '—' : nf1.format(v) + '%',
+    pct0: v => v == null || !isFinite(v) ? '—' : nf0.format(v) + '%',
+    sgn1: v => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + nf1.format(Math.abs(v)),
+    sgn0: v => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + nf0.format(Math.abs(v)),
+    compact: v => { if (v == null || !isFinite(v)) return '—'; const a = Math.abs(v); if (a >= 1e6) return nf1.format(v / 1e6) + ' mi'; if (a >= 1e4) return nf0.format(v / 1e3) + ' mil'; return nf0.format(v); },
+    date: s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) : '—',
+    dateY: s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(0, 4) : '—',
+    min: m => m == null ? '—' : String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(Math.floor(m % 60)).padStart(2, '0'),
+  };
+  const toastEl = $('#toast'); let toastT;
+  function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('show'), 2400); }
+
+  // ---------- tooltip ----------
+  const tip = $('#tip');
+  function showTip(ev, title, rows) {
+    tip.innerHTML = '';
+    if (title) tip.append(h('div', { class: 'tt' }, title));
+    for (const r of rows || []) {
+      if (typeof r === 'string') { tip.append(h('div', { class: 'ink2', style: { marginTop: '2px' } }, r)); continue; }
+      tip.append(h('div', { class: 'row' }, h('span', null, r.color ? h('i', { style: { background: r.color } }) : null, r.label), h('b', null, r.value)));
+    }
+    tip.style.display = 'block';
+    const W = tip.offsetWidth, H = tip.offsetHeight;
+    let x = ev.clientX + 14, y = ev.clientY + 14;
+    if (x + W > innerWidth - 8) x = ev.clientX - W - 14;
+    if (y + H > innerHeight - 8) y = ev.clientY - H - 14;
+    tip.style.left = Math.max(4, x) + 'px'; tip.style.top = Math.max(4, y) + 'px';
+  }
+  const hideTip = () => { tip.style.display = 'none'; };
+
+  // ---------- cores ----------
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const SERIES = ['--s1', '--s2', '--s3', '--s4', '--s5', '--s6', '--s7', '--s8'];
+  const REC = {
+    subir: { label: 'Subir SPR', icon: '↑', color: '--good' },
+    baixar: { label: 'Baixar SPR', icon: '↓', color: '--serious' },
+    revisar: { label: 'Revisar', icon: '!', color: '--warn' },
+    manter: { label: 'Manter', icon: '=', color: '--neutral' },
+    'sem dados': { label: 'Poucos dados', icon: '·', color: '--neutral' },
+  };
+  const recBadge = rec => { const r = REC[rec] || REC.manter; return h('span', { class: 'badge' }, h('i', { style: { background: `var(${r.color})` } }), r.icon + ' ' + r.label); };
+  const SEV = { alta: ['Alta', '--crit'], media: ['Média', '--serious'], baixa: ['Baixa', '--warn'] };
+  const sevBadge = sv => h('span', { class: 'badge' }, h('i', { style: { background: `var(${SEV[sv][1]})` } }), SEV[sv][0]);
+
+  // ---------- gráficos ----------
+  function niceTicks(min, max, n = 5) {
+    if (min === max) { max = min + 1; }
+    const span = max - min; const step0 = span / n; const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(st => span / st <= n) || 10 * mag;
+    const lo = Math.floor(min / step) * step, hi = Math.ceil(max / step) * step;
+    const out = []; for (let v = lo; v <= hi + step / 2; v += step) out.push(+v.toFixed(10));
+    return out;
+  }
+
+  // séries: [{name, color, values:[...]}], x: array de rótulos (iso)
+  function lineChart(el, { x, series, yFmt = F.n0, height = 230, zero = false, xFmt = F.date }) {
+    el.innerHTML = '';
+    el.classList.add('chart');
+    if (series.length > 1) el.append(h('div', { class: 'legend' }, series.map(sr => h('span', null, h('i', { style: { background: sr.color } }), sr.name))));
+    const W = Math.max(280, el.clientWidth || 600), H = height;
+    const m = { l: 46, r: 16, t: 10, b: 24 };
+    const all = series.flatMap(sr => sr.values).filter(v => v != null && isFinite(v));
+    if (!all.length || !x.length) { el.append(h('div', { class: 'empty' }, 'Sem dados no recorte.')); return; }
+    let mn = Math.min(...all), mx = Math.max(...all);
+    if (zero) mn = Math.min(0, mn);
+    const pad = (mx - mn) * 0.08 || 1; if (!zero) mn -= pad; mx += pad;
+    const ticks = niceTicks(mn, mx, 4); mn = ticks[0]; mx = ticks[ticks.length - 1];
+    const X = i => m.l + (x.length === 1 ? (W - m.l - m.r) / 2 : i * (W - m.l - m.r) / (x.length - 1));
+    const Y = v => m.t + (1 - (v - mn) / (mx - mn)) * (H - m.t - m.b);
+    const svg = s('svg', { width: W, height: H, viewBox: `0 0 ${W} ${H}` });
+    for (const t of ticks) {
+      svg.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === ticks[0] ? css('--axis') : css('--grid'), 'stroke-width': 1 }));
+      svg.append(s('text', { x: m.l - 6, y: Y(t) + 4, 'text-anchor': 'end' }, yFmt(t)));
+    }
+    const every = Math.max(1, Math.ceil(x.length / Math.max(2, Math.floor((W - m.l - m.r) / 64))));
+    x.forEach((lab, i) => { if ((i % every === 0 && (x.length - 1 - i) >= every * 0.6) || i === x.length - 1) svg.append(s('text', { x: X(i), y: H - 6, 'text-anchor': i === 0 ? 'start' : i === x.length - 1 ? 'end' : 'middle' }, xFmt(lab))); });
+    for (const sr of series) {
+      let d = ''; let pen = false;
+      sr.values.forEach((v, i) => { if (v == null || !isFinite(v)) { pen = false; return; } d += (pen ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(v).toFixed(1); pen = true; });
+      svg.append(s('path', { d, fill: 'none', stroke: sr.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'stroke-dasharray': sr.dash || null }));
+      // ponto final
+      for (let i = sr.values.length - 1; i >= 0; i--) { const v = sr.values[i]; if (v != null && isFinite(v)) { svg.append(s('circle', { cx: X(i), cy: Y(v), r: 4, fill: sr.color, stroke: css('--surface'), 'stroke-width': 2 })); break; } }
+      // pontos isolados
+      sr.values.forEach((v, i) => { const pv = sr.values[i - 1], nv = sr.values[i + 1]; if (v != null && (pv == null) && (nv == null)) svg.append(s('circle', { cx: X(i), cy: Y(v), r: 3, fill: sr.color })); });
+    }
+    const cross = s('line', { y1: m.t, y2: H - m.b, stroke: css('--axis'), 'stroke-width': 1, visibility: 'hidden' });
+    const dots = series.map(sr => s('circle', { r: 4, fill: sr.color, stroke: css('--surface'), 'stroke-width': 2, visibility: 'hidden' }));
+    svg.append(cross, ...dots);
+    const hit = s('rect', { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: 'transparent' });
+    hit.addEventListener('mousemove', ev => {
+      const r = svg.getBoundingClientRect(); const px = ev.clientX - r.left;
+      const i = Math.max(0, Math.min(x.length - 1, Math.round((px - m.l) / ((W - m.l - m.r) / Math.max(1, x.length - 1)))));
+      cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('visibility', 'visible');
+      series.forEach((sr, k) => { const v = sr.values[i]; if (v != null && isFinite(v)) { dots[k].setAttribute('cx', X(i)); dots[k].setAttribute('cy', Y(v)); dots[k].setAttribute('visibility', 'visible'); } else dots[k].setAttribute('visibility', 'hidden'); });
+      showTip(ev, xFmt === F.date ? F.dateY(x[i]) : xFmt(x[i]), series.map(sr => ({ label: sr.name, value: (sr.fmt || yFmt)(sr.values[i]), color: sr.color })));
+    });
+    hit.addEventListener('mouseleave', () => { hideTip(); cross.setAttribute('visibility', 'hidden'); dots.forEach(d => d.setAttribute('visibility', 'hidden')); });
+    svg.append(hit);
+    el.append(svg);
+  }
+
+  function barList(el, { items, fmt = F.n0, color = 'var(--s1)', max, onClick, tipRows, limit = 15 }) {
+    el.innerHTML = '';
+    const list = items.slice(0, limit);
+    if (!list.length) { el.append(h('div', { class: 'empty' }, 'Sem dados no recorte.')); return; }
+    const mx = max || Math.max(...list.map(i => i.value || 0)) || 1;
+    const wrap = h('div', { class: 'bars' });
+    for (const it of list) {
+      const row = h('div', { class: 'bar' + (onClick ? ' click' : ''), onclick: onClick ? () => onClick(it) : null },
+        h('div', { class: 'lb', title: it.label }, it.label),
+        h('div', { class: 'tr' }, h('div', { class: 'fl', style: { width: `calc(${Math.max(0, (it.value || 0) / mx * 100)}% - 60px)`, background: it.color || color } }), h('span', { class: 'vl' }, fmt(it.value))));
+      row.addEventListener('mousemove', ev => showTip(ev, it.label, tipRows ? tipRows(it) : [{ label: 'Valor', value: fmt(it.value) }]));
+      row.addEventListener('mouseleave', hideTip);
+      wrap.append(row);
+    }
+    el.append(wrap);
+    if (items.length > limit) el.append(h('div', { class: 'note' }, `Mostrando ${limit} de ${items.length}.`));
+  }
+
+  function scatter(el, { points, groups, xLabel, yLabel, height = 340, diag = true, onClick, tipRows }) {
+    el.innerHTML = ''; el.classList.add('chart');
+    el.append(h('div', { class: 'legend' }, groups.map(g => h('span', null, h('i', { class: 'dot', style: { background: g.color } }), `${g.label} (${points.filter(p => p.group === g.key).length})`))));
+    const W = Math.max(280, el.clientWidth || 600), H = height, m = { l: 46, r: 16, t: 10, b: 36 };
+    const pts = points.filter(p => isFinite(p.x) && isFinite(p.y));
+    if (!pts.length) { el.append(h('div', { class: 'empty' }, 'Sem dados.')); return; }
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    let lo = Math.min(...xs, ...ys), hi = Math.max(...xs, ...ys);
+    const xt = niceTicks(Math.min(...xs) - 2, Math.max(...xs) + 2, 5), yt = niceTicks(Math.min(...ys) - 2, Math.max(...ys) + 2, 5);
+    const X = v => m.l + (v - xt[0]) / (xt[xt.length - 1] - xt[0]) * (W - m.l - m.r);
+    const Y = v => m.t + (1 - (v - yt[0]) / (yt[yt.length - 1] - yt[0])) * (H - m.t - m.b);
+    const svg = s('svg', { width: W, height: H });
+    for (const t of yt) { svg.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: css('--grid') })); svg.append(s('text', { x: m.l - 6, y: Y(t) + 4, 'text-anchor': 'end' }, F.n0(t))); }
+    for (const t of xt) { svg.append(s('text', { x: X(t), y: H - 20, 'text-anchor': 'middle' }, F.n0(t))); }
+    svg.append(s('text', { x: (m.l + W - m.r) / 2, y: H - 4, 'text-anchor': 'middle' }, xLabel));
+    svg.append(s('text', { x: 12, y: m.t + (H - m.t - m.b) / 2, transform: `rotate(-90 12 ${m.t + (H - m.t - m.b) / 2})`, 'text-anchor': 'middle' }, yLabel));
+    if (diag) {
+      const a = Math.max(xt[0], yt[0]), b = Math.min(xt[xt.length - 1], yt[yt.length - 1]);
+      svg.append(s('line', { x1: X(a), y1: Y(a), x2: X(b), y2: Y(b), stroke: css('--axis'), 'stroke-width': 1 }));
+      svg.append(s('text', { x: X(b) - 4, y: Y(b) + 14, 'text-anchor': 'end' }, 'real = referência'));
+    }
+    const order = groups.map(g => g.key).reverse();
+    for (const p of pts.sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group))) {
+      const g = groups.find(gg => gg.key === p.group) || groups[0];
+      const c = s('circle', { cx: X(p.x), cy: Y(p.y), r: 5, fill: g.color, stroke: css('--surface'), 'stroke-width': 2, style: onClick ? 'cursor:pointer' : null });
+      c.addEventListener('mousemove', ev => { c.setAttribute('r', 7); showTip(ev, p.label, tipRows ? tipRows(p) : []); });
+      c.addEventListener('mouseleave', () => { c.setAttribute('r', 5); hideTip(); });
+      if (onClick) c.addEventListener('click', () => onClick(p));
+      svg.append(c);
+    }
+    el.append(svg);
+  }
+
+  // ---------- tabela ----------
+  let downloads = null;
+  (async () => { try { if (window.claude && typeof window.claude.use === 'function') downloads = await window.claude.use('downloads'); } catch (_) {} })();
+
+  function toCSV(cols, rows) {
+    const esc = v => { if (v == null) return ''; let s2 = typeof v === 'number' ? String(Math.round(v * 100) / 100).replace('.', ',') : String(v); if (/[;"\n\r]/.test(s2)) s2 = '"' + s2.replace(/"/g, '""') + '"'; return s2; };
+    return '﻿' + [cols.map(c => esc(c.label)).join(';'), ...rows.map(r => cols.map(c => esc(c.csv ? c.csv(r) : (c.val ? c.val(r) : r[c.key]))).join(';'))].join('\r\n');
+  }
+  async function exportRows(name, cols, rows) {
+    const csv = toCSV(cols.filter(c => c.export !== false), rows);
+    if (downloads) {
+      try { await downloads.save({ filename: name + '.csv', data: new Blob([csv], { type: 'text/csv' }) }); toast('Arquivo salvo.'); return; }
+      catch (e) { if (e && e.code === 'declined') return; }
+    }
+    if (!window.claude) {
+      try { const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); const a = h('a', { href: url, download: name + '.csv' }); document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); toast('Arquivo baixado.'); return; } catch (_) {}
+    }
+    copyText(csv.replace(/;/g, '\t').replace('﻿', ''), 'Tabela copiada. Cole no Excel ou no Sheets.');
+  }
+  async function copyText(txt, msg) {
+    try { await navigator.clipboard.writeText(txt); toast(msg || 'Copiado.'); }
+    catch (_) {
+      const ta = h('textarea', { style: { position: 'fixed', left: '-9999px' } }); ta.value = txt; document.body.append(ta); ta.select();
+      try { document.execCommand('copy'); toast(msg || 'Copiado.'); } catch (__) { toast('Não consegui copiar automaticamente.'); }
+      ta.remove();
+    }
+  }
+
+  // cols: {key,label,fmt,num,val(row),render(row),wrap,title,sortVal}
+  function table({ title, sub, cols, rows, sort, onRow, limit = 100, exportName, search, extra, maxHeight }) {
+    const st = { key: sort ? sort[0] : null, dir: sort ? sort[1] : -1, limit, q: '' };
+    const card = h('div', { class: 'card flush' });
+    const tbody = h('tbody');
+    const thead = h('thead');
+    const count = h('span', { class: 'sub' });
+    const more = h('div', { class: 'more' });
+    const valOf = (c, r) => c.sortVal ? c.sortVal(r) : c.val ? c.val(r) : r[c.key];
+    const srch = search ? h('input', { type: 'search', placeholder: 'Buscar…', oninput: e => { st.q = e.target.value.toLowerCase(); st.limit = limit; draw(); } }) : null;
+    const bar = h('div', { class: 'tblbar' }, title ? h('h3', null, title) : null, count, sub ? h('span', { class: 'sub' }, sub) : null,
+      h('div', { class: 'sp' }, extra || null, srch, exportName ? h('button', { class: 'btn small', onclick: () => exportRows(exportName, cols, filtered()) }, (downloads || !window.claude) ? 'Exportar CSV' : 'Copiar tabela') : null));
+    const wrap = h('div', { class: 'tblwrap', style: maxHeight ? { maxHeight } : null }, h('table', { class: 't' }, thead, tbody));
+    card.append(bar, wrap, more);
+    function filtered() {
+      let rs = rows;
+      if (st.q) { const cs = cols.filter(c => c.search !== false); rs = rs.filter(r => cs.some(c => { const v = c.val ? c.val(r) : r[c.key]; return v != null && String(v).toLowerCase().includes(st.q); })); }
+      if (st.key) {
+        const c = cols.find(cc => cc.key === st.key) || { key: st.key };
+        rs = rs.slice().sort((a, b) => { const va = valOf(c, a), vb = valOf(c, b); if (va == null && vb == null) return 0; if (va == null) return 1; if (vb == null) return -1; return (va > vb ? 1 : va < vb ? -1 : 0) * st.dir; });
+      }
+      return rs;
+    }
+    function draw() {
+      thead.innerHTML = ''; tbody.innerHTML = '';
+      thead.append(h('tr', null, cols.map(c => h('th', { class: c.num ? 'num' : '', title: c.title || null, onclick: () => { if (st.key === c.key) st.dir *= -1; else { st.key = c.key; st.dir = c.num ? -1 : 1; } draw(); } }, c.label, st.key === c.key ? h('span', { class: 'arr' }, st.dir > 0 ? '▲' : '▼') : null))));
+      const rs = filtered();
+      count.textContent = F.n0(rs.length) + (rs.length === 1 ? ' linha' : ' linhas');
+      const frag = document.createDocumentFragment();
+      for (const r of rs.slice(0, st.limit)) {
+        const tr = h('tr', { class: onRow ? 'click' : '', onclick: onRow ? () => onRow(r) : null });
+        for (const c of cols) {
+          let v = c.render ? c.render(r) : (c.fmt ? c.fmt(c.val ? c.val(r) : r[c.key]) : (c.val ? c.val(r) : r[c.key]));
+          let ttl = null;
+          if (c.clip && typeof v === 'string' && v.length > c.clip) { ttl = v; v = v.slice(0, c.clip).trimEnd() + '…'; }
+          tr.append(h('td', { class: (c.num ? 'num ' : '') + (c.wrap ? 'wrap' : 'nowrap'), title: ttl }, v == null || v === '' ? '—' : v));
+        }
+        frag.append(tr);
+      }
+      tbody.append(frag);
+      more.innerHTML = '';
+      if (!rs.length) more.append('Nada encontrado.');
+      else if (rs.length > st.limit) more.append(`Mostrando ${F.n0(st.limit)} de ${F.n0(rs.length)}.`, h('button', { class: 'btn small', onclick: () => { st.limit += 200; draw(); } }, 'Mostrar mais'), h('button', { class: 'btn small', onclick: () => { st.limit = Infinity; draw(); } }, 'Mostrar tudo'));
+    }
+    draw();
+    return card;
+  }
+
+  const tile = (l, v, d, opts) => h('div', { class: 'tile' + (opts && opts.onclick ? ' click' : '') + (opts && opts.sel ? ' sel' : ''), onclick: opts && opts.onclick }, h('div', { class: 'l' }, l), h('div', { class: 'v' }, v), d ? h('div', { class: 'd' }, d) : null);
+  const card = (title, sub, ...body) => h('div', { class: 'card' }, h('div', { class: 'head' }, h('h3', null, title), sub ? h('span', { class: 'sub' }, sub) : null), ...body);
+  const chartBox = (fn) => { const el = h('div'); requestAnimationFrame(() => fn(el)); return el; };
+  const how = (summary, html) => h('details', { class: 'how' }, h('summary', null, summary), h('div', { html }));
+
+  // ---------- estado ----------
+  const S = {
+    model: null, fileName: '', loadedAt: null,
+    f: { from: null, to: null, ciclos: new Set(), modo: '', uf: '', hub: '', analista: '', excluirNokExtra: true, preset: 14 },
+    params: Object.assign({}, Core.DEFAULT_PARAMS, LS.get('params', {})),
+    incluirOrf: LS.get('incluirOrf', true),
+    sheetLink: LS.get('sheetLink', null) || '', orfDays: LS.get('orfDays', 14), source: null, orfRange: null,
+    wk: { mode: LS.get('wkMode', 'week'), week: null, metric: LS.get('wkMetric', 'geral'), thr: LS.get('wkThr', 5), sel: null },
+    tab: 'geral', selHub: null, recFilter: 'todos', ruleSel: null, cache: {},
+  };
+  const TABS = [
+    ['geral', 'Visão geral'], ['semana', 'Semana × semana'], ['spr', 'SPR: subir ou baixar'], ['hubs', 'Hubs'], ['hub', 'Detalhe do hub'],
+    ['modal', 'Modal e vans'], ['orfaos', 'Órfãos'], ['qualidade', 'Qualidade do ROFI'], ['analistas', 'Analistas'], ['suporte', 'Suporte'],
+  ];
+
+  // ---------- carregamento ----------
+  const workerUrl = URL.createObjectURL(new Blob([$('#worker-src').textContent], { type: 'text/javascript' }));
+  const fileInput = $('#file');
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) load(fileInput.files[0]); fileInput.value = ''; });
+
+  function renderDrop(errMsg, errTitle) {
+    $('#tabs').hidden = true; $('#filters').hidden = true; $('#fileinfo').innerHTML = '';
+    main.innerHTML = '';
+    const dz = h('div', { class: 'dropzone', onclick: () => fileInput.click() },
+      h('h1', null, 'Solte aqui o ROFI.xlsx'),
+      h('p', null, 'ou clique para escolher o arquivo baixado da planilha.'),
+      h('p', { class: 'muted', style: { fontSize: '12.5px', marginTop: '10px' } }, 'O arquivo é lido no seu navegador. Nada é enviado para fora.'));
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) load(f); });
+    const orf = h('input', { type: 'checkbox', checked: S.incluirOrf, onchange: e => { S.incluirOrf = e.target.checked; LS.set('incluirOrf', S.incluirOrf); } });
+
+    // Google Sheets
+    const link = h('input', { type: 'text', value: S.sheetLink, placeholder: 'Link da planilha do Google Sheets', style: { width: '100%' }, oninput: e => { S.sheetLink = e.target.value; LS.set('sheetLink', S.sheetLink); } });
+    const days = h('select', { onchange: e => { S.orfDays = Number(e.target.value); LS.set('orfDays', S.orfDays); } },
+      [[0, 'Não ler a aba Órfãos'], [7, 'Órfãos: últimos 7 dias'], [14, 'Órfãos: últimos 14 dias'], [30, 'Órfãos: últimos 30 dias'], [-1, 'Órfãos: tudo (mais lento)']].map(([v, l]) => h('option', { value: v, selected: S.orfDays === v }, l)));
+    const btn = h('button', { class: 'btn primary', disabled: true, onclick: () => loadSheets() }, 'Ler do Google Sheets');
+    const status = h('div', { class: 'note' }, 'Verificando o conector…');
+    getMcp().then(m => { if (m) { btn.disabled = false; status.textContent = 'Usa o conector Google Sheets da sua conta do Claude. Na primeira vez, o Claude pede para você permitir.'; } else { status.textContent = 'Disponível quando o app é aberto dentro do Claude, com o conector Google Sheets conectado.'; } });
+    const gs = h('div', { class: 'card', style: { textAlign: 'left', marginTop: '16px' } },
+      h('div', { class: 'head' }, h('h3', null, 'Ou leia direto do Google Sheets'), h('span', { class: 'sub' }, 'sem baixar o arquivo')),
+      h('div', { style: { display: 'grid', gap: '8px' } }, link, h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' } }, days, btn)), status);
+
+    main.append(h('div', { class: 'drop' },
+      errMsg ? h('div', { class: 'err' }, h('b', null, (errTitle || 'Não consegui ler o arquivo.') + ' '), errMsg) : null,
+      dz,
+      h('label', { class: 'check', style: { justifyContent: 'center', marginTop: '12px' } }, orf, 'Ler também a aba Órfãos (pedido a pedido)'),
+      (window.claude ? gs : null),
+      h('div', { class: 'feat' },
+        h('div', null, h('b', null, 'SPR: subir ou baixar'), 'Hubs com folga para carregar mais as rotas e hubs onde o SPR está gerando órfãos, com o impacto em rotas por dia.'),
+        h('div', null, h('b', null, 'Hubs, modal e vans'), 'SPR por passeio, moto e dedicadas, perfil de pacotes, bulky por dia e candidatos a van.'),
+        h('div', null, h('b', null, 'Qualidade do ROFI'), 'Campos vazios, ciclos NOK, datas trocadas, repetições, SPR sem justificativa e versão do Fluxo, por analista.'))));
+  }
+
+  function renderProgress(label, p) {
+    main.innerHTML = '';
+    main.append(h('div', { class: 'progress' }, h('h3', null, 'Lendo ' + S.fileName), h('div', { class: 'note', id: 'pdetail' }), h('div', { class: 'pbar' }, h('div', { style: { width: Math.round(p * 100) + '%' } })), h('div', { class: 'muted' }, label + ' · ' + Math.round(p * 100) + '%')));
+  }
+
+  function setProgress(label, p) { const bar = main.querySelector('.pbar div'); const lb = main.querySelector('.progress .muted'); if (bar) bar.style.width = Math.round(p * 100) + '%'; if (lb) lb.textContent = label + ' · ' + Math.round(p * 100) + '%'; }
+
+  function onParsed(res, t0) {
+    try {
+      S.model = Core.build(res);
+      S.loadedAt = new Date(); S.loadMs = performance.now() - t0;
+      S.orfRange = res.orfRange || null;
+      setPreset(S.f.preset || 14, true);
+      if (!location.hash || !TABS.some(t => '#' + t[0] === location.hash)) location.hash = '#geral';
+      renderShell(); route();
+    } catch (e) { console.error(e); renderDrop(String(e.message || e)); }
+  }
+
+  async function load(file) {
+    S.source = 'file';
+    S.fileName = file.name;
+    $('#tabs').hidden = true; $('#filters').hidden = true;
+    renderProgress('Abrindo arquivo', 0);
+    const buf = await file.arrayBuffer();
+    const w = new Worker(workerUrl);
+    const t0 = performance.now();
+    w.onmessage = ev => {
+      const m = ev.data;
+      if (m.type === 'progress') setProgress(m.label, m.p);
+      else if (m.type === 'error') { w.terminate(); renderDrop(m.message); }
+      else if (m.type === 'done') { w.terminate(); onParsed(m.res, t0); }
+    };
+    w.onerror = e => { renderDrop(e.message || 'Erro ao ler o arquivo.'); };
+    w.postMessage({ buffer: buf, opts: { orfaos: S.incluirOrf } }, [buf]);
+  }
+
+
+  // ---------- Google Sheets (conector do Claude) ----------
+  const SHEETS = 'Google Sheets';
+  const DEFAULT_SHEET = '';
+  let mcpP = null;
+  function getMcp() {
+    if (!mcpP) mcpP = (async () => { try { if (window.claude && typeof window.claude.use === 'function') return await window.claude.use('mcp'); } catch (_) {} return null; })();
+    return mcpP;
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const sheetIdOf = s => { const m = String(s || '').match(/\/d\/([a-zA-Z0-9_-]+)/); if (m) return m[1]; const t = String(s || '').trim(); return /^[a-zA-Z0-9_-]{20,}$/.test(t) ? t : null; };
+  const colLetter = n => { let r = ''; while (n > 0) { const m = (n - 1) % 26; r = String.fromCharCode(65 + m) + r; n = Math.floor((n - 1) / 26); } return r; };
+  const qs = name => "'" + String(name).replace(/'/g, "''") + "'";
+  const AUTH = new Set(['needs_reauth', 'server_not_connected', 'selection_required', 'not_in_manifest', 'blocked_by_policy', 'approval_required', 'not_granted', 'capability_disabled', 'capability_removed', 'consent_required', 'user_changed', 'server_not_found']);
+
+  async function sheetsCall(mcp, tool, input) {
+    const once = async () => { const r = await mcp.callTool(SHEETS, tool, input, { cache: false }); let p = r.payload; if (typeof p === 'string') { try { p = JSON.parse(p); } catch (_) {} } if (!p || typeof p !== 'object') throw { code: 'bad_payload', message: 'Resposta do Sheets incompleta.' }; return p; };
+    try { return await once(); }
+    catch (e) {
+      if (e && e.retryable) { await sleep((e.retryAfterMs || 600) + Math.random() * 600); return await once(); }
+      throw e;
+    }
+  }
+  // lê linhas [r1..r2] e, se o bloco for grande demais para uma chamada, divide em dois
+  async function readRows(mcp, id, sheet, lastCol, r1, r2) {
+    try {
+      const p = await sheetsCall(mcp, 'get_values', { spreadsheetId: id, range: `${qs(sheet)}!A${r1}:${lastCol}${r2}` });
+      return (p && p.values) || [];
+    } catch (e) {
+      if (e && AUTH.has(e.code)) throw e;
+      if (e && e.code === 'tool_error' && /not found|unavailable|n[aã]o encontrad/i.test(e.message || '')) throw e;
+      if (r2 - r1 < 150) throw e;
+      const mid = Math.floor((r1 + r2) / 2);
+      const a = await readRows(mcp, id, sheet, lastCol, r1, mid);
+      const b = await readRows(mcp, id, sheet, lastCol, mid + 1, r2);
+      // completa linhas vazias do bloco de cima para manter a ordem
+      while (a.length < mid - r1 + 1 && b.length) a.push([]);
+      return a.concat(b);
+    }
+  }
+  async function pool(tasks, n, onDone) {
+    const out = new Array(tasks.length); let i = 0, done = 0;
+    const worker = async () => { while (i < tasks.length) { const k = i++; out[k] = await tasks[k](); done++; onDone && onDone(done, tasks.length); } };
+    await Promise.all(Array.from({ length: Math.min(n, tasks.length) }, worker));
+    return out;
+  }
+  const cellsToRow = r => r.map(v => v === '' ? null : v);
+
+  async function loadSheets(isRefresh) {
+    const id = sheetIdOf(S.sheetLink);
+    if (!id) { renderDrop('Cole o link completo da planilha (docs.google.com/spreadsheets/d/...).', 'Link inválido.'); return; }
+    const mcp = await getMcp();
+    if (!mcp) { renderDrop('Esse modo só funciona com o app aberto dentro do Claude.', 'Google Sheets indisponível.'); return; }
+    S.source = 'sheets'; S.fileName = 'Google Sheets';
+    $('#tabs').hidden = true; $('#filters').hidden = true;
+    renderProgress('Conectando ao Google Sheets', 0.01);
+    const t0 = performance.now();
+    try {
+      const meta = await sheetsCall(mcp, 'get_spreadsheet', { spreadsheetId: id, fields: ['properties.title', 'sheets.properties.title', 'sheets.properties.gridProperties'] });
+      const sheets = ((meta && meta.sheets) || []).map(x => ({ title: x.properties.title, rows: x.properties.gridProperties.rowCount, cols: x.properties.gridProperties.columnCount }));
+      S.fileName = (meta && meta.properties && meta.properties.title) || 'Google Sheets';
+      const find = pred => sheets.find(x => pred(XL.norm(x.title)));
+      const shMain = find(n => n === 'rofi_3.0') || find(n => /^rofi[_ ]?3/.test(n));
+      const shSup = find(n => n === 'suporte');
+      const shOrf = find(n => n === 'orfaos');
+      if (!shMain) throw { code: 'no_main', message: 'Não encontrei a aba ROFI_3.0 nessa planilha. Abas: ' + sheets.map(x => x.title).join(', ') };
+      const withOrf = shOrf && S.orfDays !== 0;
+      const W = { main: 0.55, sup: 0.05, orf: withOrf ? 0.4 : 0 }; const tot = W.main + W.sup + W.orf;
+      let base = 0;
+
+      // ROFI_3.0
+      const CH = 2000; const lc = colLetter(shMain.cols);
+      const tasks = []; for (let r = 1; r <= shMain.rows; r += CH) { const a = r, b = Math.min(shMain.rows, r + CH - 1); tasks.push(() => readRows(mcp, id, shMain.title, lc, a, b)); }
+      const parts = await pool(tasks, 3, (d, n) => setProgress(`Lendo ${shMain.title} (${d} de ${n} blocos)`, (base + W.main * d / n) / tot));
+      base += W.main;
+      let header = null; const rows = [];
+      for (const part of parts) for (const r of part) {
+        if (!header) { const ns = r.map(XL.norm); if (ns.includes('spr_final') || (ns.includes('hub') && ns.includes('analista'))) header = r.map(v => String(v || '').trim()); continue; }
+        if (r.some(v => v !== '' && v != null)) rows.push(cellsToRow(r));
+      }
+      if (!header) throw { code: 'no_main', message: 'Não encontrei o cabeçalho da aba ROFI_3.0.' };
+
+      // Suporte
+      let suporte = null;
+      if (shSup) {
+        setProgress('Lendo Suporte', base / tot);
+        const v = await readRows(mcp, id, shSup.title, colLetter(Math.min(shSup.cols, 15)), 1, shSup.rows);
+        if (v.length) { const hd = v[0].map(x => String(x || '').trim()); suporte = { header: hd, rows: v.slice(1).filter(r => r.some(x => x !== '')).map(cellsToRow) }; }
+        base += W.sup;
+      }
+
+      // Órfãos: de baixo para cima, até passar do período pedido
+      let orfaos = null, orfRange = null;
+      if (withOrf) {
+        const B = XL.orfBuilder();
+        const hd = await readRows(mcp, id, shOrf.title, 'L', 1, 1);
+        if (hd.length) B.setHeader(hd[0]);
+        // última linha com dado (o Sheets corta as linhas vazias do fim)
+        setProgress('Procurando o fim da aba Órfãos', base / tot);
+        let last = 0, top = shOrf.rows;
+        while (top > 1 && !last) {
+          const from = Math.max(2, top - 60000 + 1);
+          const v = await readRows(mcp, id, shOrf.title, 'A', from, top);
+          if (v.length) last = from + v.length - 1; else top = from - 1;
+        }
+        const today = new Date(); const todayS = Math.round((Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(1899, 11, 30)) / 864e5);
+        const cutoff = S.orfDays > 0 ? todayS - S.orfDays - 1 : -Infinity;
+        const OCH = 10000; let end = last, stop = false, read = 0;
+        const span = S.orfDays > 0 ? Math.min(last, S.orfDays * 12000) : last;
+        while (end >= 2 && !stop) {
+          const ranges = []; for (let k = 0; k < 3 && end >= 2; k++) { const a = Math.max(2, end - OCH + 1); ranges.push([a, end]); end = a - 1; }
+          const got = await Promise.all(ranges.map(([a, b]) => readRows(mcp, id, shOrf.title, 'K', a, b)));
+          let allOld = true;
+          got.forEach(v => { let mx = -Infinity; for (const r of v) { const d = B.push(r); if (d != null && d > mx) mx = d; } if (mx >= cutoff) allOld = false; read += v.length; });
+          if (S.orfDays > 0 && allOld) stop = true;
+          setProgress(`Lendo Órfãos (${F.n0(read)} linhas)`, (base + W.orf * Math.min(1, read / Math.max(1, span))) / tot);
+        }
+        orfaos = B.finish();
+        orfRange = { days: S.orfDays, minDay: orfaos.minDay, maxDay: orfaos.maxDay, rows: read };
+      }
+      setProgress('Montando as análises', 1);
+      await sleep(30);
+      S.sheetLoadedAt = new Date();
+      onParsed({ sheets: sheets.map(x => x.title), main: { header, rows }, suporte, orfaos, hasOrfaosSheet: !!shOrf, orfRange }, t0);
+    } catch (e) {
+      console.error(e);
+      renderDrop(sheetsErrorText(e), 'Não consegui ler do Google Sheets.');
+    }
+  }
+
+  function sheetsErrorText(e) {
+    const code = e && e.code, msg = (e && e.message) || '';
+    switch (code) {
+      case 'needs_reauth': return 'O login do Google Sheets expirou. Reconecte em Configurações → Customize → Connectors → Google Sheets e tente de novo.';
+      case 'server_not_connected': case 'server_not_found': return 'O conector Google Sheets não está conectado na sua conta do Claude. Conecte em Configurações → Customize → Connectors.';
+      case 'selection_required': return 'Você tem mais de um conector Google Sheets. Escolha qual usar no aviso do Claude e tente de novo.';
+      case 'not_in_manifest': case 'consent_required': return 'O acesso ao Google Sheets não foi permitido para este app. Clique em "Ler do Google Sheets" de novo e permita quando o Claude perguntar.';
+      case 'approval_required': return 'O Claude precisa da sua permissão para o app ler a planilha. Clique em "Ler do Google Sheets" de novo e aceite o pedido.';
+      case 'blocked_by_policy': return 'A sua organização bloqueia o uso deste conector.';
+      case 'not_granted': case 'capability_disabled': case 'capability_removed': return 'Esse modo só funciona com o app aberto dentro do Claude.';
+      case 'tool_error': return /not found|unavailable/i.test(msg) ? 'A planilha não foi encontrada para a conta do Google conectada. Confira o link e se essa conta tem acesso ao ROFI.' : 'O Google Sheets respondeu com erro: ' + msg;
+      case 'server_unavailable': case 'upstream_error': return 'O Google Sheets não respondeu agora. Espere um pouco e tente de novo.';
+      case 'no_main': return msg;
+      default: return 'Erro inesperado' + (code ? ` (${code})` : '') + (msg ? ': ' + msg : '.');
+    }
+  }
+
+  // ---------- filtros ----------
+  function setPreset(days, silent) {
+    const M = S.model; S.f.preset = days;
+    S.f.to = M.maxDate;
+    S.f.from = days ? Core.addDays(M.maxDate, -(days - 1)) : M.minDate;
+    if (S.f.from < M.minDate) S.f.from = M.minDate;
+    if (!silent) refresh();
+  }
+  function refresh() { S.cache = {}; renderFilters(); renderTabs(); route(); }
+
+  function renderShell() {
+    const M = S.model;
+    const fi = $('#fileinfo'); fi.innerHTML = '';
+    if (S.source === 'sheets') {
+      const hh = S.sheetLoadedAt ? String(S.sheetLoadedAt.getHours()).padStart(2, '0') + ':' + String(S.sheetLoadedAt.getMinutes()).padStart(2, '0') : '';
+      fi.append(h('span', null, `Google Sheets · ${S.fileName} · ${F.n0(M.ops.length)} roteirizações · lido às ${hh}`),
+        h('button', { class: 'btn small primary', onclick: () => loadSheets(true) }, 'Atualizar do Sheets'),
+        h('button', { class: 'btn small', onclick: () => fileInput.click() }, 'Usar arquivo .xlsx'));
+    } else {
+      fi.append(h('span', null, S.fileName + ' · ' + F.n0(M.ops.length) + ' roteirizações · dados até ' + F.dateY(M.today)),
+        h('button', { class: 'btn small', onclick: () => fileInput.click() }, 'Carregar versão nova'),
+        h('button', { class: 'btn small', onclick: () => renderDrop() }, 'Google Sheets'));
+    }
+    renderFilters(); renderTabs();
+  }
+
+  function renderFilters() {
+    const M = S.model, f = S.f; const el = $('#filters'); el.hidden = false; el.innerHTML = '';
+    const presets = [[7, '7 dias'], [14, '14 dias'], [30, '30 dias'], [0, 'Tudo']];
+    el.append(h('div', { class: 'fgroup' }, h('label', null, 'Período'),
+      h('div', { class: 'seg' }, presets.map(([d, l]) => h('button', { class: f.preset === d ? 'on' : '', onclick: () => setPreset(d) }, l))),
+      h('input', { type: 'date', value: f.from, min: M.minDate, max: M.maxDate, onchange: e => { f.from = e.target.value || M.minDate; f.preset = -1; refresh(); } }),
+      h('span', { class: 'muted' }, 'a'),
+      h('input', { type: 'date', value: f.to, min: M.minDate, max: M.maxDate, onchange: e => { f.to = e.target.value || M.maxDate; f.preset = -1; refresh(); } })));
+    el.append(h('div', { class: 'fgroup' }, h('label', null, 'Ciclo'), M.ciclos.filter(c => !(f.excluirNokExtra && (c === 'NOK' || c === 'EXTRA'))).map(c => h('button', { class: 'chip' + (f.ciclos.has(c) ? ' on' : ''), onclick: () => { f.ciclos.has(c) ? f.ciclos.delete(c) : f.ciclos.add(c); refresh(); } }, c))));
+    const sel = (label, value, opts, on, all = 'Todos') => h('div', { class: 'fgroup' }, h('label', null, label), h('select', { onchange: e => on(e.target.value) }, h('option', { value: '' }, all), opts.map(o => h('option', { value: o[0], selected: o[0] === value }, o[1]))));
+    el.append(sel('Modo', f.modo, M.modos.map(m => [m, m]), v => { f.modo = v; refresh(); }));
+    el.append(sel('UF', f.uf, M.ufs.map(u => [u, u]), v => { f.uf = v; if (v && f.hub && (M.hubs.get(f.hub) || {}).uf !== v) f.hub = ''; refresh(); }, 'Todas'));
+    const hubOpts = [...M.hubs.values()].filter(hb => !f.uf || hb.uf === f.uf).sort((a, b) => a.short.localeCompare(b.short)).map(hb => [hb.code, hb.short + ' · ' + hb.code]);
+    el.append(sel('Hub', f.hub, hubOpts, v => { f.hub = v; refresh(); }));
+    el.append(sel('Analista', f.analista, M.analistas.map(a => [a, a.replace(/@.*/, '')]), v => { f.analista = v; refresh(); }));
+    el.append(h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: f.excluirNokExtra, onchange: e => { f.excluirNokExtra = e.target.checked; if (f.excluirNokExtra) { f.ciclos.delete('NOK'); f.ciclos.delete('EXTRA'); } refresh(); } }), 'Ignorar NOK e EXTRA'));
+    const any = f.ciclos.size || f.modo || f.uf || f.hub || f.analista;
+    if (any) el.append(h('button', { class: 'btn small', onclick: () => { f.ciclos.clear(); f.modo = f.uf = f.hub = f.analista = ''; refresh(); } }, 'Limpar recortes'));
+  }
+
+  // ---------- dados derivados (com cache por recorte) ----------
+  const D = {
+    list() { return S.cache.list || (S.cache.list = Core.filterOps(S.model, S.f)); },
+    total() { return S.cache.total || (S.cache.total = Core.agg(D.list())); },
+    hubs() { return S.cache.hubs || (S.cache.hubs = Core.hubTable(S.model, D.listNoHub(), S.params)); },
+    // a tabela de hubs ignora o filtro de hub (para comparar com os pares)
+    listNoHub() { if (!S.f.hub) return D.list(); return S.cache.listNoHub || (S.cache.listNoHub = Core.filterOps(S.model, { ...S.f, hub: '' })); },
+    rec() { return S.cache.rec || (S.cache.rec = Core.sprRecommend(D.hubs(), S.params)); },
+    recRows() { const r = D.rec().rows; return S.f.hub ? r.filter(x => x.hub === S.f.hub) : r; },
+    modal() { return S.cache.modal || (S.cache.modal = Core.modal(D.hubs())); },
+    orf() { if (!('orf' in S.cache)) S.cache.orf = Core.orfaos(S.model, S.f); return S.cache.orf; },
+    orfNoHub() { if (!S.f.hub) return D.orf(); if (!('orfNoHub' in S.cache)) S.cache.orfNoHub = Core.orfaos(S.model, { ...S.f, hub: '' }); return S.cache.orfNoHub; },
+    rawList() { return S.cache.raw || (S.cache.raw = Core.filterOpsRaw(S.model, S.f)); },
+    qual() { return S.cache.qual || (S.cache.qual = Core.quality(S.model, D.rawList())); },
+    analysts() { return S.cache.an || (S.cache.an = Core.analysts(S.model, D.list(), D.qual())); },
+    weeks() { return S.cache.weeks || (S.cache.weeks = Core.weeks(S.model)); },
+    wk() {
+      const W = S.wk; const ws = D.weeks();
+      if (!W.week || !ws.some(x => x.start === W.week)) W.week = (ws[0] && S.model.maxDate < ws[0].end && ws[1]) ? ws[1].start : (ws[0] || {}).start;
+      const key = [W.mode, W.week, W.metric].join('|');
+      if (!S.cache.wk || S.cache.wkKey !== key) { S.cache.wk = Core.weekCompare(S.model, S.f, { mode: W.mode, week: W.week, metric: W.metric }); S.cache.wkKey = key; }
+      return S.cache.wk;
+    },
+    sup() { if (!('sup' in S.cache)) S.cache.sup = Core.suporte(S.model, S.f); return S.cache.sup; },
+  };
+
+  function renderTabs() {
+    const nav = $('#tabs'); nav.hidden = false; nav.innerHTML = '';
+    let recN = null, qN = null;
+    try { recN = D.recRows().filter(r => r.rec === 'subir' || r.rec === 'baixar').length; } catch (_) {}
+    try { qN = D.qual().comErro; } catch (_) {}
+    for (const [k, l] of TABS) {
+      const cnt = k === 'spr' ? recN : k === 'qualidade' ? qN : null;
+      nav.append(h('a', { href: '#' + k, class: S.tab === k ? 'on' : '' }, l, cnt ? h('span', { class: 'count' }, F.n0(cnt)) : null));
+    }
+  }
+
+  function goHub(code) { S.selHub = code; location.hash = '#hub'; if (S.tab === 'hub') route(); }
+
+  function route() {
+    if (!S.model) return;
+    const t = (location.hash || '#geral').slice(1);
+    S.tab = TABS.some(x => x[0] === t) ? t : 'geral';
+    [...$('#tabs').children].forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#' + S.tab));
+    main.innerHTML = '';
+    hideTip();
+    const fn = VIEWS[S.tab];
+    try { fn(); } catch (e) { console.error(e); main.append(h('div', { class: 'err' }, 'Erro ao montar esta aba: ' + (e.message || e))); }
+  }
+  window.addEventListener('hashchange', route);
+  let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (S.model) route(); }, 200); });
+
+  const periodTxt = () => `${F.dateY(S.f.from)} a ${F.dateY(S.f.to)}`;
+  const hubLink = (code, label) => h('a', { href: '#hub', onclick: e => { e.preventDefault(); e.stopPropagation(); goHub(code); } }, label);
+  const color = i => css(SERIES[i]);
+
+  // ---------- VIEWS ----------
+  const VIEWS = {};
+
+  // VISÃO GERAL
+  VIEWS.geral = () => {
+    const L = D.list(), A = D.total();
+    if (!L.length) { main.append(h('div', { class: 'empty' }, 'Nenhuma roteirização no recorte.')); return; }
+    const R = D.recRows();
+    const sub = R.filter(r => r.rec === 'subir'), bai = R.filter(r => r.rec === 'baixar');
+    const econ = sub.reduce((s2, r) => s2 + (r.impactoRotasDia || 0), 0), extra = bai.reduce((s2, r) => s2 + (r.impactoRotasDia || 0), 0);
+    const Q = D.qual();
+    main.append(h('h2', null, 'Visão geral'), h('p', { class: 'lead' }, `${periodTxt()} · ${F.n0(A.dias)} dias de expedição · ${F.n0(new Set(L.map(o => o.hub)).size)} hubs.`, S.f.to === S.model.maxDate && S.model.maxDate >= S.model.today ? ` O dia ${F.date(S.model.maxDate)} ainda pode estar em andamento.` : ''));
+    main.append(h('div', { class: 'tiles' },
+      tile('Roteirizações', F.n0(A.n), `${F.n1(A.n / A.dias)} por dia`),
+      tile('Pedidos roteirizados', F.compact(A.pedRot), `${F.compact(A.pedRot / A.dias)} por dia`),
+      tile('Rotas', F.n0(A.rotas), `${F.n0(A.rotas / A.dias)} por dia`),
+      tile('SPR geral', F.n1(A.spr), `planejado ${F.n1(A.sprPlan)}`),
+      tile('SPR passeio', F.n1(A.sprPas), `moto ${F.n1(A.sprMoto)} · dedicadas ${F.n1(A.sprDed)}`),
+      tile('Não roteirizados', F.pct(A.naoRotPct), `${F.n0(A.naoRot)} pedidos`),
+      tile('Órfãos iniciais', F.pct(A.orfPct), `${F.n0(A.orfIni)} pedidos`),
+      tile('Tempo médio', F.n0(A.tempoMed) + ' min', `mediana ${F.n0(A.tempoMediana)} min`)));
+
+    const top = (arr, k) => arr.slice().sort((a, b) => b.score - a.score).slice(0, k);
+    const hl = h('div', { class: 'hl' },
+      h('div', { class: 'it' }, h('span', { class: 'k' }, recBadge('subir')), h('div', null, h('b', null, `${sub.length} hubs`), ` com folga para subir o SPR passeio. Economia estimada de ${F.n0(-econ)} rotas por dia. Maiores: `, top(sub, 4).map((r, i) => [i ? ', ' : '', hubLink(r.hub, r.nome)]), '.')),
+      h('div', { class: 'it' }, h('span', { class: 'k' }, recBadge('baixar')), h('div', null, h('b', null, `${bai.length} hubs`), ` com órfãos ou pedidos não roteirizados acima do limite. Pedem cerca de ${F.n0(extra)} rotas a mais por dia. Maiores: `, top(bai, 4).map((r, i) => [i ? ', ' : '', hubLink(r.hub, r.nome)]), '.')),
+      h('div', { class: 'it' }, h('span', { class: 'k' }, h('span', { class: 'badge' }, h('i', { style: { background: 'var(--crit)' } }), 'Erros')), h('div', null, h('b', null, `${F.n0(Q.comErro)} roteirizações`), ` (${F.pct(Q.comErro / Q.total * 100)}) com algum problema de preenchimento no ROFI. `, h('a', { href: '#qualidade' }, 'Ver regras'), '.')));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Destaques do recorte', null, hl, h('div', { style: { marginTop: '12px' } }, h('button', { class: 'btn small', onclick: () => copyText(resumoTexto(), 'Resumo copiado.') }, 'Copiar resumo para o meet'))),
+      card('SPR por dia', 'pedidos roteirizados ÷ rotas', chartBox(el => {
+        const d = Core.daily(L);
+        lineChart(el, { x: d.map(x => x.key), height: 200, yFmt: F.n0, series: [{ name: 'Passeio', color: color(0), values: d.map(x => x.sprPas), fmt: F.n1 }, { name: 'Moto', color: color(1), values: d.map(x => x.sprMoto), fmt: F.n1 }, { name: 'Geral', color: color(2), values: d.map(x => x.spr), fmt: F.n1 }] });
+      }))));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Rotas por dia, por modal', 'dedicadas = rotas finais − passeio − moto', chartBox(el => {
+        const d = Core.daily(L);
+        lineChart(el, { x: d.map(x => x.key), height: 220, zero: true, series: [{ name: 'Passeio', color: color(0), values: d.map(x => x.pasRot) }, { name: 'Moto', color: color(1), values: d.map(x => x.motoRot) }, { name: 'Dedicadas', color: color(2), values: d.map(x => x.dedRot) }] });
+      })),
+      card('Justificativas de SPR', `${F.n0(A.justN)} roteirizações justificadas (${F.pct(A.justN / A.n * 100)})`, chartBox(el => {
+        const c = Core.countBy(L, o => o.just);
+        barList(el, { items: c.map(x => ({ label: x.key, value: x.n })), tipRows: it => [{ label: 'Roteirizações', value: F.n0(it.value) }, { label: 'Do total', value: F.pct(it.value / A.n * 100) }] });
+      }))));
+    const cic = Core.daily(L, o => o.ciclo).map(x => ({ ...x, ciclo: x.key }));
+    main.append(table({ title: 'Por ciclo', cols: [
+      { key: 'ciclo', label: 'Ciclo' }, { key: 'n', label: 'Roteirizações', num: 1, fmt: F.n0 }, { key: 'pedRot', label: 'Pedidos', num: 1, fmt: F.n0 }, { key: 'rotas', label: 'Rotas', num: 1, fmt: F.n0 },
+      { key: 'spr', label: 'SPR geral', num: 1, fmt: F.n1 }, { key: 'sprPas', label: 'SPR passeio', num: 1, fmt: F.n1 }, { key: 'sprMoto', label: 'SPR moto', num: 1, fmt: F.n1 }, { key: 'sprDed', label: 'SPR dedicadas', num: 1, fmt: F.n1 },
+      { key: 'naoRotPct', label: 'Não rot. %', num: 1, fmt: F.pct }, { key: 'orfPct', label: 'Órfãos %', num: 1, fmt: F.pct }, { key: 'tempoMed', label: 'Tempo médio', num: 1, fmt: v => F.n0(v) + ' min' }],
+      rows: cic, sort: ['n', -1], exportName: 'rofi_por_ciclo' }));
+  };
+
+  function resumoTexto() {
+    const A = D.total(), R = D.recRows(), Q = D.qual();
+    const sub = R.filter(r => r.rec === 'subir').sort((a, b) => b.score - a.score), bai = R.filter(r => r.rec === 'baixar').sort((a, b) => b.score - a.score);
+    const lst = arr => arr.slice(0, 5).map(r => `${r.nome} (${F.n0(r.sprPas)} → ${F.n0(r.alvo)})`).join('; ') || 'nenhum';
+    const topRules = Q.rules.filter(r => r.rows.length).sort((a, b) => b.rows.length - a.rows.length).slice(0, 3).map(r => `${r.label.toLowerCase()} (${r.rows.length})`).join(', ');
+    return [
+      `ROFI · ${periodTxt()}${S.f.uf ? ' · ' + S.f.uf : ''}${S.f.hub ? ' · ' + (S.model.hubs.get(S.f.hub) || {}).short : ''}`,
+      `• ${F.n0(A.n)} roteirizações, ${F.compact(A.pedRot)} pedidos e ${F.n0(A.rotas)} rotas. SPR geral ${F.n1(A.spr)} (passeio ${F.n1(A.sprPas)}, moto ${F.n1(A.sprMoto)}).`,
+      `• Não roteirizados ${F.pct(A.naoRotPct)} e órfãos iniciais ${F.pct(A.orfPct)}.`,
+      `• Subir SPR: ${sub.length} hubs, economia estimada de ${F.n0(-sub.reduce((s2, r) => s2 + (r.impactoRotasDia || 0), 0))} rotas/dia. Principais: ${lst(sub)}.`,
+      `• Baixar SPR: ${bai.length} hubs com órfãos/não roteirizados acima do limite. Principais: ${lst(bai)}.`,
+      `• Qualidade do ROFI: ${F.n0(Q.comErro)} roteirizações com algum erro (${F.pct(Q.comErro / Q.total * 100)}). Mais comuns: ${topRules || 'nenhum'}.`,
+    ].join('\n');
+  }
+
+
+  // SEMANA × SEMANA
+  VIEWS.semana = () => {
+    const W = S.wk; const wk = D.wk(); const ws = D.weeks();
+    const thr = Number(W.thr) || 5;
+    const mLabel = W.metric === 'passeio' ? 'SPR passeio' : 'SPR geral';
+    const per = r => `${F.date(r[0])} a ${F.date(r[1])}`;
+    main.append(h('h2', null, 'Semana × semana'), h('p', { class: 'lead' }, `${mLabel} de ${per(wk.cur)} contra ${per(wk.prev)}. Nesta aba o filtro de período não vale; ciclo, modo, UF e analista valem.`));
+    const setW = (k, v) => { W[k] = v; LS.set({ mode: 'wkMode', metric: 'wkMetric', thr: 'wkThr' }[k] || 'wk_' + k, v); W.sel = null; route(); };
+    main.append(h('div', { class: 'filters', style: { borderBottom: 0, paddingTop: 0 } },
+      h('div', { class: 'fgroup' }, h('label', null, 'Comparar'), h('div', { class: 'seg' },
+        h('button', { class: W.mode === 'week' ? 'on' : '', onclick: () => setW('mode', 'week') }, 'Semanas (seg a dom)'),
+        h('button', { class: W.mode === 'rolling' ? 'on' : '', onclick: () => setW('mode', 'rolling') }, 'Últimos 7 dias')),
+        W.mode === 'week' ? h('select', { onchange: e => { W.week = e.target.value; W.sel = null; route(); } }, ws.slice(0, -1).map(x => h('option', { value: x.start, selected: x.start === W.week }, `${F.date(x.start)} a ${F.date(x.end)}${S.model.maxDate < x.end ? ' (em andamento)' : ''}`))) : null),
+      h('div', { class: 'fgroup' }, h('label', null, 'Métrica'), h('div', { class: 'seg' },
+        h('button', { class: W.metric === 'geral' ? 'on' : '', onclick: () => setW('metric', 'geral') }, 'SPR geral'),
+        h('button', { class: W.metric === 'passeio' ? 'on' : '', onclick: () => setW('metric', 'passeio') }, 'SPR passeio'))),
+      h('div', { class: 'fgroup' }, h('label', null, 'Queda a partir de'), h('input', { type: 'number', min: 1, max: 50, step: 1, value: thr, onchange: e => setW('thr', Number(e.target.value) || 5) }), h('span', { class: 'muted' }, 'pontos'))));
+
+    let rows = wk.rows.filter(r => r.delta != null);
+    if (S.f.hub) rows = rows.filter(r => r.hub === S.f.hub);
+    const drops = rows.filter(r => r.delta <= -thr).sort((a, b) => a.delta - b.delta);
+    const ups = rows.filter(r => r.delta >= thr);
+    const extra = drops.reduce((s2, r) => s2 + Math.max(0, r.rotasExtraDia || 0), 0);
+    main.append(h('div', { class: 'tiles' },
+      tile(mLabel + ' da rede', `${F.n1(wk.net.sprPrev)} → ${F.n1(wk.net.sprCur)}`, `${F.sgn1(wk.net.delta)} pontos`),
+      tile(`Hubs com queda de ${thr}+ pts`, F.n0(drops.length), `de ${F.n0(rows.length)} hubs com as duas semanas`),
+      tile(`Hubs com alta de ${thr}+ pts`, F.n0(ups.length), null),
+      tile('Rotas a mais por dia', F.n0(extra), 'custo das quedas, no volume da semana atual')));
+
+    const sel = W.sel || S.f.hub || (drops[0] || {}).hub;
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Maiores ofensores da semana', `hubs com queda de ${thr}+ pts, pelas rotas a mais por dia`, chartBox(el => barList(el, {
+        items: drops.filter(r => r.rotasExtraDia > 0).sort((a, b) => b.rotasExtraDia - a.rotasExtraDia).map(r => ({ label: r.nome, value: r.rotasExtraDia, r, color: 'var(--serious)' })),
+        fmt: v => F.n1(v), limit: 12, onClick: it => { W.sel = it.r.hub; route(); },
+        tipRows: it => [{ label: mLabel, value: `${F.n1(it.r.sprPrev)} → ${F.n1(it.r.sprCur)}` }, { label: 'Variação', value: F.sgn1(it.r.delta) + ' pts' }, { label: 'Rotas/dia a mais', value: F.n1(it.r.rotasExtraDia) }] }))),
+      card('Maiores quedas de SPR', 'em pontos', chartBox(el => barList(el, {
+        items: drops.map(r => ({ label: r.nome, value: -r.delta, r, color: 'var(--serious)' })), fmt: v => '−' + F.n1(v), limit: 12, onClick: it => { W.sel = it.r.hub; route(); },
+        tipRows: it => [{ label: mLabel, value: `${F.n1(it.r.sprPrev)} → ${F.n1(it.r.sprCur)}` }, ...(it.r.drivers || []).slice(0, 2)] })))));
+
+    // detalhe do hub selecionado
+    if (sel && rows.some(r => r.hub === sel)) {
+      const r = rows.find(x => x.hub === sel);
+      const det = Core.weekHubDetail(S.model, wk, sel, W.metric);
+      const dr = det.dr;
+      const down = r.delta < 0;
+      const box = h('div', { class: 'card rec-card', id: 'wkdet', style: { borderLeftColor: down ? 'var(--serious)' : 'var(--good)', marginBottom: '14px' } },
+        h('div', { class: 'head' }, h('h3', null, r.nome), h('span', null, `${mLabel} ${F.n1(r.sprPrev)} → `, h('b', null, F.n1(r.sprCur)), ` (${F.sgn1(r.delta)} pts)`),
+          r.rotasExtraDia != null ? h('span', { class: 'sub' }, `${F.sgn1(r.rotasExtraDia)} rotas/dia · pedidos/dia ${F.n0(r.pedDiaPrev)} → ${F.n0(r.pedDiaCur)} · planejado ${F.n1(r.planPrev)} → ${F.n1(r.planCur)}`) : null,
+          h('div', { class: 'actions' }, h('button', { class: 'btn small', onclick: () => goHub(sel) }, 'Abrir detalhe do hub'))),
+        down ? h('div', null, h('b', null, 'O que explica a queda'),
+          h('ul', { class: 'motivos' }, (dr.top.length ? dr.top : ['Nenhum recorte isolado explica a queda; ela aparece espalhada.']).map(t => h('li', null, t)), dr.ctx.map(t => h('li', null, t))),
+          h('div', { class: 'note' }, 'Cada linha olha a mesma queda por um recorte diferente (ciclo, modal, dia ou analista), por isso os pontos não se somam. O número diz quanto o SPR do hub estaria acima se aquela parte tivesse repetido a semana anterior.'))
+          : h('ul', { class: 'motivos' }, dr.ctx.map(t => h('li', null, t)).concat([h('li', null, 'O SPR não caiu nesta comparação.')])));
+      main.append(box);
+      const segCols = keyLabel => [
+        { key: 'key', label: keyLabel, render: x => h('b', null, keyLabel === 'Dia' ? Core.WD[x.key] : keyLabel === 'Analista' ? String(x.key).replace(/@.*/, '') : x.key), csv: x => x.key },
+        { key: 'sprPrev', label: 'SPR ant.', num: 1, fmt: F.n1 }, { key: 'sprCur', label: 'SPR atual', num: 1, fmt: F.n1 },
+        { key: 'shareCur', label: '% rotas', num: 1, render: x => `${F.n0(x.sharePrev)}% → ${F.n0(x.shareCur)}%`, sortVal: x => x.shareCur },
+        { key: 'contrib', label: 'Impacto', num: 1, render: x => x.contrib == null ? (x.sumiu ? 'saiu' : 'novo') : h('span', { class: x.contrib < -0.05 ? 'neg' : x.contrib > 0.05 ? 'pos' : '' }, F.sgn1(x.contrib) + ' pts'), sortVal: x => x.contrib ?? 0, csv: x => x.contrib },
+      ];
+      const segTable = (title, c, keyLabel) => table({ title, rows: c.parts, sort: null, limit: 20, maxHeight: '320px', cols: segCols(keyLabel) });
+      main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+        card('SPR por dia da semana', `${per(wk.prev)} × ${per(wk.cur)}`, chartBox(el => lineChart(el, { x: Core.WD, xFmt: v => v, height: 220, series: [{ name: 'Semana anterior', color: color(1), values: det.wd0, fmt: F.n1 }, { name: 'Semana atual', color: color(0), values: det.wd1, fmt: F.n1 }] }))),
+        segTable('Por ciclo', dr.byCiclo, 'Ciclo')));
+      main.append(h('div', { class: 'grid g3', style: { marginBottom: '14px' } },
+        dr.byModal ? h('div', null, segTable('Por modal', dr.byModal, 'Modal'), dr.byModal.mix != null ? h('p', { class: 'note' }, `Efeito da mudança no mix de modal: ${F.sgn1(dr.byModal.mix)} pts.`) : null) : h('div', { class: 'card' }, h('h3', null, 'Por modal'), h('div', { class: 'muted' }, 'Só no SPR geral.')),
+        segTable('Por dia da semana', dr.byDay, 'Dia'),
+        segTable('Por analista', dr.byAn, 'Analista')));
+      main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+        card('Justificativas na semana atual', null, chartBox(el => barList(el, { items: det.just.map(x => ({ label: x.key, value: x.n })), limit: 8 }))),
+        card('Clusters ofensores na semana atual', 'órfãos citados no ROFI', chartBox(el => barList(el, { items: det.clusters.map(([k, v]) => ({ label: k, value: v })), limit: 8 })))));
+      main.append(table({ title: 'Roteirizações da semana atual', sub: 'comparadas com o SPR do mesmo ciclo na semana anterior', exportName: 'rofi_semana_' + sel, rows: det.ops, sort: ['dif', 1], limit: 40,
+        cols: [{ key: 'date', label: 'Data', val: x => x.o.date, fmt: F.dateY }, { key: 'wd', label: 'Dia', val: x => Core.WD[Core.weekdayOf(x.o.date)] }, { key: 'ciclo', label: 'Ciclo', val: x => x.o.ciclo },
+          { key: 'analista', label: 'Analista', val: x => (x.o.analista || '').replace(/@.*/, '') }, { key: 'ped', label: 'Pedidos', num: 1, val: x => W.metric === 'passeio' ? x.o.pasPed : x.o.pedRot, fmt: F.n0 },
+          { key: 'rot', label: 'Rotas', num: 1, val: x => W.metric === 'passeio' ? x.o.pasRot : x.o.rotasFinal, fmt: F.n0 },
+          { key: 'spr', label: 'SPR', num: 1, fmt: F.n1 }, { key: 'ref', label: 'Ref. sem. ant.', num: 1, fmt: F.n1 }, { key: 'dif', label: 'Diferença', num: 1, render: x => x.dif == null ? '—' : h('span', { class: x.dif <= -thr ? 'neg' : '' }, F.sgn1(x.dif)), csv: x => x.dif },
+          { key: 'plan', label: 'SPR plan.', num: 1, val: x => W.metric === 'passeio' ? x.o.pasSprP : x.o.sprPlan, fmt: F.n0 }, { key: 'just', label: 'Justificativa', val: x => x.o.just, wrap: 1 }] }));
+      main.append(h('div', { style: { height: '14px' } }));
+    }
+
+    main.append(table({ title: 'Todos os hubs', search: true, exportName: 'rofi_semana_x_semana', rows: rows.slice().sort((a, b) => a.delta - b.delta), sort: null, limit: 300,
+      onRow: r => { W.sel = r.hub; route(); requestAnimationFrame(() => { const el = document.getElementById('wkdet'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); },
+      extra: h('button', { class: 'btn small', onclick: () => copyText(ofensoresTexto(), 'Ofensores copiados.') }, 'Copiar ofensores'),
+      cols: [
+        { key: 'nome', label: 'Hub', render: r => h('b', null, r.nome) }, { key: 'uf', label: 'UF' },
+        { key: 'sprPrev', label: 'SPR ant.', num: 1, fmt: F.n1 }, { key: 'sprCur', label: 'SPR atual', num: 1, fmt: F.n1 },
+        { key: 'delta', label: 'Variação', num: 1, render: r => r.delta <= -thr ? h('span', { class: 'badge' }, h('i', { style: { background: 'var(--serious)' } }), F.sgn1(r.delta)) : h('span', { class: r.delta >= thr ? 'pos' : '' }, F.sgn1(r.delta)), sortVal: r => r.delta, csv: r => r.delta },
+        { key: 'rotasExtraDia', label: 'Rotas/dia', num: 1, fmt: F.sgn1, title: 'Rotas a mais (+) ou a menos (−) por dia por causa da variação de SPR' },
+        { key: 'pedDiaCur', label: 'Pedidos/dia', num: 1, render: r => `${F.n0(r.pedDiaPrev)} → ${F.n0(r.pedDiaCur)}`, sortVal: r => r.pedDiaCur, csv: r => r.pedDiaCur },
+        { key: 'planCur', label: 'SPR plan.', num: 1, render: r => `${F.n0(r.planPrev)} → ${F.n0(r.planCur)}`, sortVal: r => (r.planCur || 0) - (r.planPrev || 0), csv: r => r.planCur },
+        { key: 'drivers', label: 'Principais ofensores', wrap: 1, val: r => (r.drivers || []).join(' · '), clip: 200 },
+      ] }));
+  };
+
+  function ofensoresTexto() {
+    const W = S.wk, wk = D.wk(), thr = Number(W.thr) || 5;
+    const mLabel = W.metric === 'passeio' ? 'SPR passeio' : 'SPR geral';
+    const drops = wk.rows.filter(r => r.delta != null && r.delta <= -thr).sort((a, b) => a.delta - b.delta);
+    const lines = [`Ofensores da semana · ${mLabel} · ${F.date(wk.cur[0])} a ${F.date(wk.cur[1])} contra ${F.date(wk.prev[0])} a ${F.date(wk.prev[1])}`,
+      `Rede: ${F.n1(wk.net.sprPrev)} → ${F.n1(wk.net.sprCur)} (${F.sgn1(wk.net.delta)} pts). ${drops.length} hubs caíram ${thr}+ pontos.`];
+    for (const r of drops.slice(0, 15)) lines.push(`• ${r.nome}: ${F.n1(r.sprPrev)} → ${F.n1(r.sprCur)} (${F.sgn1(r.delta)}; ${F.sgn1(r.rotasExtraDia)} rotas/dia). ${(r.drivers || []).slice(0, 2).join('; ')}`);
+    return lines.join('\n');
+  }
+
+  // SPR SUBIR/BAIXAR
+  VIEWS.spr = () => {
+    const RR = D.rec(); const rows = D.recRows(); const P = S.params;
+    main.append(h('h2', null, 'SPR: subir ou baixar'), h('p', { class: 'lead' }, `Cada hub é comparado com o próprio histórico e com hubs de perfil parecido, olhando o SPR de passeio (o que o template controla). ${periodTxt()}.`));
+    main.append(how('Como a recomendação é feita', `
+      <b>Subir</b> quando o hub tem folga (órfãos ≤ ${F.n1(P.orfMax)}% e não roteirizados ≤ ${F.n1(P.nrMax)}%) e o SPR passeio está pelo menos ${P.gap} abaixo de uma destas referências:
+      <br>• <b>SPR comprovado</b>: o nível que o próprio hub sustentou nos dias sem estresse (mediana dos dias com órfãos e não roteirizados baixos, mínimo 5 dias);
+      <br>• <b>Referência de perfil</b>: o SPR esperado para o % de bulky, % de G, participação de moto e volume diário do hub, calculado com todos os hubs do recorte (R² ${RR.r2 == null ? '—' : F.n1(RR.r2 * 100) + '%'}: o perfil explica só parte da diferença entre hubs, então use como apoio).
+      <br><b>Baixar</b> quando órfãos ≥ ${F.n1(P.alertaOrf)}% ou não roteirizados ≥ ${F.n1(P.alertaNr)}% e o SPR não está abaixo das referências, ou quando o SPR está acima da referência com perfil pesado (bulky no quartil mais alto) e órfãos.
+      <br><b>Revisar</b> quando o SPR passeio diário oscila mais de ${P.cvMax}% (faixa entre os dias 10% e 90%) em torno da mediana.
+      <br>O <b>alvo</b> respeita um passo máximo de ${P.passoMax}% por ajuste. O impacto em rotas por dia considera só os pedidos de passeio.`));
+
+    // parâmetros
+    const inp = (k, label, step, min, max) => h('label', null, label, h('input', { type: 'number', value: P[k], step, min, max, onchange: e => { const v = Number(e.target.value); if (isFinite(v)) { S.params[k] = v; LS.set('params', S.params); S.cache = {}; renderTabs(); route(); } } }));
+    main.append(h('details', { class: 'card', style: { marginBottom: '14px' } }, h('summary', { style: { cursor: 'pointer', fontWeight: 600 } }, 'Ajustar critérios'),
+      h('div', { class: 'params' },
+        inp('minDias', 'Mínimo de dias com dados', 1, 1, 60), inp('gap', 'Distância mínima da referência (SPR)', 1, 1, 50),
+        inp('orfMax', 'Folga: órfãos até (%)', 0.1, 0, 10), inp('nrMax', 'Folga: não roteirizados até (%)', 0.1, 0, 10),
+        inp('alertaOrf', 'Alerta: órfãos a partir de (%)', 0.1, 0, 20), inp('alertaNr', 'Alerta: não roteirizados a partir de (%)', 0.1, 0, 20),
+        inp('passoMax', 'Passo máximo por ajuste (%)', 1, 1, 30), inp('cvMax', 'Oscilação para revisar (%)', 1, 5, 200)),
+      h('div', { style: { marginTop: '10px' } }, h('button', { class: 'btn small', onclick: () => { S.params = Object.assign({}, Core.DEFAULT_PARAMS); LS.set('params', S.params); S.cache = {}; renderTabs(); route(); } }, 'Voltar ao padrão'))));
+
+    const cnt = k => rows.filter(r => r.rec === k);
+    const imp = k => cnt(k).reduce((s2, r) => s2 + (r.impactoRotasDia || 0), 0);
+    const setF = k => { S.recFilter = S.recFilter === k ? 'todos' : k; route(); };
+    main.append(h('div', { class: 'tiles' },
+      tile('↑ Subir SPR', F.n0(cnt('subir').length) + ' hubs', `economia de ${F.n0(-imp('subir'))} rotas/dia`, { onclick: () => setF('subir'), sel: S.recFilter === 'subir' }),
+      tile('↓ Baixar SPR', F.n0(cnt('baixar').length) + ' hubs', `+${F.n0(imp('baixar'))} rotas/dia`, { onclick: () => setF('baixar'), sel: S.recFilter === 'baixar' }),
+      tile('! Revisar', F.n0(cnt('revisar').length) + ' hubs', 'SPR instável entre os dias', { onclick: () => setF('revisar'), sel: S.recFilter === 'revisar' }),
+      tile('= Manter', F.n0(cnt('manter').length) + ' hubs', 'dentro do esperado', { onclick: () => setF('manter'), sel: S.recFilter === 'manter' }),
+      tile('Saldo líquido', F.sgn0(imp('subir') + imp('baixar')) + ' rotas/dia', 'se todos os ajustes forem aplicados')));
+
+    const groups = [{ key: 'subir', label: 'Subir', color: css('--good') }, { key: 'baixar', label: 'Baixar', color: css('--serious') }, { key: 'revisar', label: 'Revisar', color: css('--warn') }, { key: 'manter', label: 'Manter', color: css('--neutral') }];
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('SPR passeio real × referência de perfil', 'abaixo da linha = SPR menor que o esperado · clique para abrir o hub', chartBox(el => scatter(el, {
+        points: rows.filter(r => r.esperado != null && r.rec !== 'sem dados').map(r => ({ x: r.esperado, y: r.sprPas, group: r.rec, label: r.nome, hub: r.hub, r })),
+        groups, xLabel: 'Referência de perfil (SPR passeio)', yLabel: 'SPR passeio real', onClick: p => goHub(p.hub),
+        tipRows: p => [{ label: 'Real', value: F.n1(p.r.sprPas) }, { label: 'Referência', value: F.n1(p.r.esperado) }, { label: 'Comprovado', value: F.n1(p.r.provado) }, { label: 'Órfãos', value: F.pct(p.r.orfPct) }, { label: 'Não rot.', value: F.pct(p.r.naoRotPct) }, { label: 'Bulky', value: F.pct(p.r.bulkyPct) }, REC[p.r.rec].label],
+      }))),
+      card('Maior impacto em rotas por dia', 'economia (subir) e rotas extras (baixar)', chartBox(el => {
+        const items = rows.filter(r => r.impactoRotasDia).sort((a, b) => Math.abs(b.impactoRotasDia) - Math.abs(a.impactoRotasDia)).map(r => ({ label: r.nome, value: Math.abs(r.impactoRotasDia), r, color: r.rec === 'subir' ? 'var(--good)' : 'var(--serious)' }));
+        barList(el, { items, fmt: v => F.n1(v), limit: 14, onClick: it => goHub(it.r.hub), tipRows: it => [REC[it.r.rec].label, { label: 'SPR passeio', value: `${F.n1(it.r.sprPas)} → ${F.n1(it.r.alvo)}` }, { label: 'Rotas/dia', value: F.sgn1(it.r.impactoRotasDia) }] });
+      }))));
+
+    const ordem = { subir: 0, baixar: 1, revisar: 2, manter: 3, 'sem dados': 4 };
+    const shown = S.recFilter === 'todos' ? rows : rows.filter(r => r.rec === S.recFilter);
+    main.append(table({
+      title: 'Hubs', sub: S.recFilter !== 'todos' ? 'filtro: ' + REC[S.recFilter].label : null, search: true, exportName: 'rofi_spr_recomendacoes',
+      extra: S.recFilter !== 'todos' ? h('button', { class: 'btn small', onclick: () => { S.recFilter = 'todos'; route(); } }, 'Mostrar todos') : null,
+      rows: shown.slice().sort((a, b) => ordem[a.rec] - ordem[b.rec] || b.score - a.score), sort: null, onRow: r => goHub(r.hub), limit: 150,
+      cols: [
+        { key: 'nome', label: 'Hub', render: r => h('span', null, h('b', null, r.nome), h('span', { class: 'muted' }, ' · ' + r.hub)) },
+        { key: 'uf', label: 'UF' },
+        { key: 'rec', label: 'Recomendação', render: r => recBadge(r.rec), sortVal: r => ordem[r.rec], csv: r => REC[r.rec].label },
+        { key: 'sprPas', label: 'SPR passeio', num: 1, fmt: F.n1 },
+        { key: 'alvo', label: 'Alvo', num: 1, fmt: F.n1, title: 'SPR passeio sugerido (respeita o passo máximo)' },
+        { key: 'impactoRotasDia', label: 'Rotas/dia', num: 1, fmt: F.sgn1, title: 'Variação de rotas de passeio por dia com o alvo' },
+        { key: 'motivos', label: 'Por quê', wrap: 1, val: r => r.motivos.join(' '), clip: 230 },
+        { key: 'provado', label: 'Comprovado', num: 1, fmt: F.n1, title: 'SPR passeio mediano dos dias sem estresse (órfãos e não roteirizados baixos)' },
+        { key: 'esperado', label: 'Ref. perfil', num: 1, fmt: F.n1 },
+        { key: 'orfPct', label: 'Órfãos %', num: 1, fmt: F.pct },
+        { key: 'naoRotPct', label: 'Não rot. %', num: 1, fmt: F.pct },
+        { key: 'bulkyPct', label: 'Bulky %', num: 1, fmt: F.pct },
+        { key: 'ocup', label: 'Uso disp.', num: 1, fmt: F.pct0, title: 'Rotas ÷ disponibilidade total' },
+        { key: 'cv', label: 'Oscilação', num: 1, fmt: F.pct0 },
+        { key: 'tendencia', label: 'Tend. 7d', num: 1, fmt: F.sgn1, title: 'SPR passeio dos últimos 7 dias menos o período anterior' },
+        { key: 'dias', label: 'Dias', num: 1, fmt: F.n0 },
+      ],
+    }));
+    if (S.f.hub) main.append(h('p', { class: 'note' }, 'A comparação usa todos os hubs do recorte; a tabela mostra só o hub filtrado.'));
+  };
+
+  // HUBS
+  VIEWS.hubs = () => {
+    const rows = D.rec().rows.filter(r => !S.f.hub || r.hub === S.f.hub);
+    main.append(h('h2', null, 'Hubs'), h('p', { class: 'lead' }, `Todos os indicadores por hub em ${periodTxt()}. Clique numa linha para ver o detalhe.`));
+    main.append(table({
+      search: true, exportName: 'rofi_hubs', rows, sort: ['pedDia', -1], onRow: r => goHub(r.hub), limit: 300,
+      cols: [
+        { key: 'nome', label: 'Hub', render: r => h('b', null, r.nome) }, { key: 'hub', label: 'Código' }, { key: 'uf', label: 'UF' },
+        { key: 'rec', label: 'SPR', render: r => recBadge(r.rec), csv: r => REC[r.rec].label },
+        { key: 'n', label: 'Rots.', num: 1, fmt: F.n0 }, { key: 'dias', label: 'Dias', num: 1, fmt: F.n0 },
+        { key: 'pedDia', label: 'Pedidos/dia', num: 1, fmt: F.n0 }, { key: 'rotasDia', label: 'Rotas/dia', num: 1, fmt: F.n1 },
+        { key: 'spr', label: 'SPR geral', num: 1, fmt: F.n1 }, { key: 'sprPas', label: 'SPR passeio', num: 1, fmt: F.n1 }, { key: 'sprMoto', label: 'SPR moto', num: 1, fmt: F.n1 }, { key: 'sprDed', label: 'SPR dedic.', num: 1, fmt: F.n1 },
+        { key: 'deltaPlan', label: 'Final − plan.', num: 1, fmt: F.sgn1, title: 'Média de SPR final menos SPR planejado' },
+        { key: 'motoShare', label: 'Moto % ped.', num: 1, fmt: F.pct }, { key: 'dedShareRot', label: 'Dedic. % rotas', num: 1, fmt: F.pct },
+        { key: 'bulkyPct', label: 'Bulky %', num: 1, fmt: F.pct }, { key: 'gPct', label: 'G %', num: 1, fmt: F.pct },
+        { key: 'orfPct', label: 'Órfãos %', num: 1, fmt: F.pct }, { key: 'naoRotPct', label: 'Não rot. %', num: 1, fmt: F.pct },
+        { key: 'ocup', label: 'Uso disp.', num: 1, fmt: F.pct0 }, { key: 'cv', label: 'Oscilação', num: 1, fmt: F.pct0 }, { key: 'tendencia', label: 'Tend. 7d', num: 1, fmt: F.sgn1 },
+        { key: 'tempoMed', label: 'Tempo (min)', num: 1, fmt: F.n0 }, { key: 'justPct', label: 'Justif. %', num: 1, fmt: F.pct0 }, { key: 'justTop', label: 'Justificativa principal' },
+      ],
+    }));
+  };
+
+  // DETALHE DO HUB
+  VIEWS.hub = () => {
+    const M = S.model;
+    const code = S.f.hub || S.selHub || (D.hubs().slice().sort((a, b) => b.pedDia - a.pedDia)[0] || {}).hub;
+    const hubs = [...M.hubs.values()].sort((a, b) => a.short.localeCompare(b.short));
+    const dl = h('datalist', { id: 'hublist' }, hubs.map(hb => h('option', { value: hb.short + ' · ' + hb.code })));
+    const pick = h('input', { type: 'text', list: 'hublist', placeholder: 'Buscar hub…', value: code ? (M.hubs.get(code).short + ' · ' + code) : '', onchange: e => { const m = e.target.value.match(/·\s*(\S+)\s*$/); const hb = m ? M.hubs.get(m[1]) : hubs.find(x => x.short.toLowerCase() === e.target.value.toLowerCase()); if (hb) { S.selHub = hb.code; if (S.f.hub && S.f.hub !== hb.code) { S.f.hub = ''; refresh(); } else route(); } } });
+    main.append(h('div', { class: 'hubpick' }, h('h2', { style: { margin: 0 } }, 'Detalhe do hub'), pick, dl, S.f.hub ? h('span', { class: 'muted' }, '(filtro de hub ativo)') : null));
+    if (!code) { main.append(h('div', { class: 'empty' }, 'Escolha um hub.')); return; }
+    const hb = M.hubs.get(code);
+    const L = D.list().filter(o => o.hub === code);
+    if (!L.length) { main.append(h('div', { class: 'empty' }, `Sem roteirizações de ${hb.short} no recorte.`)); return; }
+    const A = Core.agg(L);
+    const rec = D.rec().rows.find(r => r.hub === code);
+    main.append(h('p', { class: 'lead' }, `${hb.name} · ${code} · ${periodTxt()} · ${A.dias} dias, ${A.n} roteirizações.`));
+    main.append(h('div', { class: 'tiles' },
+      tile('SPR passeio', F.n1(A.sprPas), `planejado ${F.n1(A.sprPasPlan)}`), tile('SPR geral', F.n1(A.spr), `moto ${F.n1(A.sprMoto)} · dedic. ${F.n1(A.sprDed)}`),
+      tile('Pedidos por dia', F.n0(A.pedRot / A.dias), `${F.n0(A.rotas / A.dias)} rotas por dia`),
+      tile('Órfãos iniciais', F.pct(A.orfPct), `${F.n0(A.orfIni / A.dias)} por dia`), tile('Não roteirizados', F.pct(A.naoRotPct), `${F.n0(A.naoRot / A.dias)} por dia`),
+      tile('Perfil', F.pct(A.bulkyPct) + ' bulky', `G ${F.pct(A.gPct)}`), tile('Uso da disponibilidade', F.pct0(A.ocup), 'rotas ÷ disponibilidade'), tile('Tempo médio', F.n0(A.tempoMed) + ' min', null)));
+
+    if (rec) {
+      const rc = REC[rec.rec];
+      main.append(h('div', { class: 'card rec-card', style: { borderLeftColor: `var(${rc.color})`, marginBottom: '14px' } },
+        h('div', { class: 'head' }, recBadge(rec.rec), rec.alvo ? h('span', null, `SPR passeio ${F.n1(rec.sprPas)} → `, h('b', null, F.n1(rec.alvo)), ` · ${F.sgn1(rec.impactoRotasDia)} rotas/dia`) : null,
+          h('span', { class: 'sub' }, `comprovado ${F.n1(rec.provado)} · referência de perfil ${F.n1(rec.esperado)} · mediana da UF ${F.n1(rec.ufMed)}`)),
+        h('ul', { class: 'motivos' }, rec.motivos.map(m => h('li', null, m)))));
+    }
+
+    // simulador
+    const pasPedDia = A.pasPed / A.dias, pasRotDia = A.pasRot / A.dias;
+    const out = h('div', { class: 'sim' });
+    const simIn = h('input', { type: 'number', step: 1, value: Math.round(rec && rec.alvo ? rec.alvo : A.sprPas || 100), oninput: () => sim() });
+    function sim() {
+      const v = Number(simIn.value); out.innerHTML = '';
+      if (!(v > 0) || !pasPedDia) return;
+      const nr = pasPedDia / v; const d = nr - pasRotDia;
+      out.append(h('div', null, h('div', { class: 'muted' }, 'Rotas de passeio por dia'), h('div', { class: 'big' }, `${F.n1(pasRotDia)} → ${F.n1(nr)}`)),
+        h('div', null, h('div', { class: 'muted' }, 'Diferença'), h('div', { class: 'big ' + (d < 0 ? 'pos' : d > 0 ? 'neg' : '') }, F.sgn1(d) + ' rotas/dia')),
+        h('div', null, h('div', { class: 'muted' }, 'No período'), h('div', { class: 'big' }, F.sgn0(d * A.dias) + ' rotas')));
+    }
+    sim();
+    main.append(h('div', { class: 'card', style: { marginBottom: '14px' } }, h('div', { class: 'head' }, h('h3', null, 'Simulador de SPR passeio'), h('span', { class: 'sub' }, `com ${F.n0(pasPedDia)} pedidos de passeio por dia`)), h('div', { class: 'sim' }, h('label', { class: 'check' }, 'SPR alvo', simIn), out)));
+
+    const d = Core.daily(L);
+    const orfMap = S.model.orf ? (S.cache.orfHD || (S.cache.orfHD = Core.orfByHubDay(S.model, S.f))) : null;
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('SPR passeio por dia', 'final × planejado', chartBox(el => lineChart(el, { x: d.map(x => x.key), height: 210, series: [{ name: 'Final', color: color(0), values: d.map(x => x.sprPas), fmt: F.n1 }, { name: 'Planejado', color: color(1), values: d.map(x => x.sprPasPlan), fmt: F.n1 }, { name: 'Moto', color: color(2), values: d.map(x => x.sprMoto), fmt: F.n1 }] }))),
+      card('Rotas por dia, por modal', null, chartBox(el => lineChart(el, { x: d.map(x => x.key), height: 210, zero: true, series: [{ name: 'Passeio', color: color(0), values: d.map(x => x.pasRot) }, { name: 'Moto', color: color(1), values: d.map(x => x.motoRot) }, { name: 'Dedicadas', color: color(2), values: d.map(x => x.dedRot) }] })))));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Órfãos e não roteirizados por dia', orfMap ? 'órfãos iniciais (ROFI) e órfãos da aba Órfãos' : 'órfãos iniciais e não roteirizados (ROFI)', chartBox(el => {
+        const series = [{ name: 'Órfãos iniciais', color: color(0), values: d.map(x => x.orfIni) }, { name: 'Não roteirizados', color: color(1), values: d.map(x => x.naoRot) }];
+        if (orfMap) series.push({ name: 'Aba Órfãos', color: color(2), values: d.map(x => (orfMap.get(code + '|' + x.key) || {}).n || 0) });
+        lineChart(el, { x: d.map(x => x.key), height: 210, zero: true, series });
+      })),
+      card('Clusters ofensores', 'soma dos órfãos citados no ROFI', chartBox(el => {
+        const m = new Map(); for (const o of L) for (const [nm, n] of Core.parseClusters(o.orfClusters)) m.set(nm, (m.get(nm) || 0) + n);
+        barList(el, { items: [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => ({ label: k, value: v })), limit: 10 });
+      }))));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Justificativas', null, chartBox(el => barList(el, { items: Core.countBy(L, o => o.just).map(x => ({ label: x.key, value: x.n })), limit: 10 }))),
+      card('Perfil de pacotes', 'quantidade no período', chartBox(el => barList(el, { items: [['PP', A.pp], ['P', A.p], ['M', A.m], ['G', A.g], ['Bulky', A.bulky]].map(([k, v]) => ({ label: k, value: v })), fmt: F.compact, tipRows: it => [{ label: 'Pacotes', value: F.n0(it.value) }, { label: 'Do total', value: F.pct(it.value / A.perfil * 100) }] })))));
+    main.append(table({
+      title: 'Roteirizações do hub', exportName: 'rofi_hub_' + code, rows: L, sort: ['date', -1], limit: 60,
+      cols: [
+        { key: 'date', label: 'Expedição', fmt: F.dateY }, { key: 'ciclo', label: 'Ciclo' }, { key: 'analista', label: 'Analista', val: r => r.analista.replace(/@.*/, '') }, { key: 'modo', label: 'Modo' }, { key: 'versao', label: 'Versão' },
+        { key: 'pedPlan', label: 'Ped. plan.', num: 1, fmt: F.n0 }, { key: 'pedRot', label: 'Roteiriz.', num: 1, fmt: F.n0 }, { key: 'rotasFinal', label: 'Rotas', num: 1, fmt: F.n0 },
+        { key: 'sprPlan', label: 'SPR plan.', num: 1, fmt: F.n0 }, { key: 'sprFinal', label: 'SPR final', num: 1, fmt: F.n0 }, { key: 'pasSpr', label: 'SPR pas.', num: 1, fmt: F.n0 }, { key: 'motoSpr', label: 'SPR moto', num: 1, fmt: F.n0 },
+        { key: 'orfIni', label: 'Órfãos', num: 1, fmt: F.n0 }, { key: 'naoRot', label: 'Não rot.', num: 1, fmt: F.n0 }, { key: 'tempo', label: 'Tempo', num: 1, fmt: F.n0 }, { key: 'just', label: 'Justificativa', wrap: 1 },
+      ],
+    }));
+  };
+
+  // MODAL E VANS
+  VIEWS.modal = () => {
+    const rows0 = D.modal();
+    const O = D.orfNoHub();
+    const ov = new Map(); if (O) for (const e of O.hubs) ov.set(e.hub, e);
+    const rows = rows0.filter(r => !S.f.hub || r.hub === S.f.hub).map(r => { const e = ov.get(r.hub); return { ...r, orfVolBulkyDia: e ? (e.volBulky || 0) / Math.max(1, r.dias) : null, orfNrDia: e ? e.nr / Math.max(1, r.dias) : null }; });
+    const A = D.total();
+    main.append(h('h2', null, 'Modal e vans'), h('p', { class: 'lead' }, 'Como as rotas se dividem entre passeio, moto e dedicadas, e quais hubs concentram volumosos sem rota de van.'));
+    main.append(h('div', { class: 'tiles' },
+      tile('Rotas de passeio', F.pct(A.pasRot / A.rotas * 100), `${F.n0(A.pasRot / A.dias)} por dia`),
+      tile('Rotas de moto', F.pct(A.motoRot / A.rotas * 100), `${F.n0(A.motoRot / A.dias)} por dia · SPR ${F.n1(A.sprMoto)}`),
+      tile('Rotas dedicadas', F.pct(A.dedRot / A.rotas * 100), `${F.n0(A.dedRot / A.dias)} por dia · SPR ${F.n1(A.sprDed)}`),
+      tile('Rotas de van', F.n0(A.vanRot), `${F.n1(A.vanRot / A.dias)} por dia`),
+      tile('Bulky por dia', F.n0(A.bulky / A.dias), `${F.pct(A.bulkyPct)} dos pacotes`),
+      tile('Candidatos a van', F.n0(rows.filter(r => r.flagModal === 'candidato a van').length) + ' hubs', 'muito bulky e nenhuma van')));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Bulky por dia', 'hubs com mais pacotes bulky', chartBox(el => barList(el, { items: rows.filter(r => r.bulkyDia).sort((a, b) => b.bulkyDia - a.bulkyDia).map(r => ({ label: r.nome, value: r.bulkyDia, r, color: r.flagModal === 'candidato a van' ? 'var(--s2)' : 'var(--s1)' })), limit: 15, onClick: it => goHub(it.r.hub), tipRows: it => [{ label: 'Bulky/dia', value: F.n0(it.r.bulkyDia) }, { label: 'Van rotas/dia', value: F.n1(it.r.vanRotDia) }, { label: 'Dedicadas/dia', value: F.n1(it.r.dedRotDia) }, it.r.flagModal || ''] }))),
+      card(O ? 'Litros de bulky órfão por dia' : 'Órfãos bulky por dia', O ? 'da aba Órfãos' : 'do ROFI', chartBox(el => {
+        const key = O ? 'orfVolBulkyDia' : 'orfBulkyDia';
+        barList(el, { items: rows.filter(r => r[key]).sort((a, b) => b[key] - a[key]).map(r => ({ label: r.nome, value: r[key], r })), fmt: O ? (v => F.n0(v) + ' L') : F.n1, limit: 15, onClick: it => goHub(it.r.hub) });
+      }))));
+    main.append(h('p', { class: 'note', style: { marginTop: '-6px', marginBottom: '10px' } }, 'Barras em laranja: hubs marcados como candidatos a van.'));
+    main.append(table({
+      title: 'Por hub', search: true, exportName: 'rofi_modal_vans', rows, sort: ['bulkyDia', -1], onRow: r => goHub(r.hub), limit: 300,
+      cols: [
+        { key: 'nome', label: 'Hub', render: r => h('b', null, r.nome) }, { key: 'uf', label: 'UF' },
+        { key: 'flagModal', label: 'Sinal', render: r => r.flagModal ? h('span', { class: 'badge' }, h('i', { style: { background: r.flagModal === 'candidato a van' ? 'var(--s2)' : 'var(--warn)' } }), r.flagModal) : '' },
+        { key: 'bulkyDia', label: 'Bulky/dia', num: 1, fmt: F.n0 }, { key: 'gDia', label: 'G/dia', num: 1, fmt: F.n0 }, { key: 'bulkyPct', label: 'Bulky %', num: 1, fmt: F.pct },
+        { key: 'dedRotDia', label: 'Dedicadas/dia', num: 1, fmt: F.n1 }, { key: 'sprDed', label: 'Ped./dedicada', num: 1, fmt: F.n1 }, { key: 'vanRotDia', label: 'Van/dia', num: 1, fmt: F.n1 },
+        { key: 'dispFioDia', label: 'Disp. fiorino', num: 1, fmt: F.n0, title: 'Média de fiorinos disponíveis por roteirização' },
+        { key: 'orfBulkyDia', label: 'Órfãos bulky/dia', num: 1, fmt: F.n1 },
+        O ? { key: 'orfVolBulkyDia', label: 'Litros bulky órfão/dia', num: 1, fmt: F.n0 } : null,
+        O ? { key: 'orfNrDia', label: 'Não rot. (Órfãos)/dia', num: 1, fmt: F.n1, title: 'Pedidos da aba Órfãos marcados como não roteirizados por capacidade' } : null,
+        { key: 'motoShare', label: 'Moto % ped.', num: 1, fmt: F.pct }, { key: 'sprMoto', label: 'SPR moto', num: 1, fmt: F.n1 }, { key: 'motoRotDia', label: 'Motos/dia', num: 1, fmt: F.n1 }, { key: 'dispMotoDia', label: 'Disp. moto', num: 1, fmt: F.n0 },
+        { key: 'motivosModal', label: 'Por quê', wrap: 1 },
+      ].filter(Boolean),
+    }));
+  };
+
+  // ÓRFÃOS
+  VIEWS.orfaos = () => {
+    const M = S.model; const L = D.list(); const A = D.total();
+    main.append(h('h2', null, 'Órfãos'), h('p', { class: 'lead' }, `Pedidos que ficaram sem rota. ${periodTxt()}.`));
+    const O = D.orf();
+    if (!O) {
+      main.append(h('div', { class: 'card', style: { marginBottom: '14px' } }, M.hasOrfaosSheet ? ['A aba Órfãos não foi lida. ', h('button', { class: 'btn small', onclick: () => { S.incluirOrf = true; LS.set('incluirOrf', true); fileInput.click(); } }, 'Recarregar com Órfãos')] : 'O arquivo não tem a aba Órfãos. Abaixo, só o que vem do ROFI_3.0.'));
+    } else {
+      const sit = k => (O.sits.find(x => x.key === k) || { n: 0 }).n;
+      if (S.orfRange && S.orfRange.days > 0) main.append(h('p', { class: 'note', style: { marginTop: '-8px', marginBottom: '12px' } }, `Lidos do Sheets os órfãos de ${F.dateY(Core.serialToIso(S.orfRange.minDay))} a ${F.dateY(Core.serialToIso(S.orfRange.maxDay))} (últimos ${S.orfRange.days} dias). Períodos mais antigos aparecem vazios.`));
+      main.append(h('div', { class: 'tiles' },
+        tile('Órfãos únicos', F.n0(O.n), `${F.n0(O.n / Math.max(1, O.days.length))} por dia`),
+        tile('Realocados', F.pct(sit('Realocado') / O.n * 100), `${F.n0(sit('Realocado'))} saíram em outra rota`),
+        tile('Não roteirizados', F.pct(sit('Não roteirizado') / O.n * 100), 'por disponibilidade × capacidade'),
+        tile('Sem validação', F.pct(sit('Sem validação') / O.n * 100), `${F.n0(sit('Sem validação'))} pedidos`),
+        tile('Volume', F.compact(O.vol) + ' L', `${F.n1(O.litrosPorPed)} L por pedido`),
+        tile('Fora da análise', F.n0(O.excl), 'volume > 5.000 L ou data futura')));
+      main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+        card('Órfãos por dia', 'por situação', chartBox(el => lineChart(el, { x: O.days.map(x => x.iso), height: 220, zero: true, series: [{ name: 'Realocado', color: color(0), values: O.days.map(x => x.real) }, { name: 'Não roteirizado', color: color(1), values: O.days.map(x => x.nr) }, { name: 'Sem validação', color: color(2), values: O.days.map(x => x.sv) }] }))),
+        card('Por categoria', 'pedidos e litros', chartBox(el => barList(el, { items: O.cats.map(c => ({ label: c.key || '—', value: c.n, c })), tipRows: it => [{ label: 'Pedidos', value: F.n0(it.c.n) }, { label: 'Litros', value: F.n0(it.c.vol) }, { label: 'L por pedido', value: F.n1(it.c.vol / it.c.n) }, { label: 'Realocados', value: F.pct(it.c.real / it.c.n * 100) }] })))));
+      main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+        table({ title: 'Hubs', exportName: 'rofi_orfaos_hubs', rows: O.hubs, sort: ['n', -1], onRow: r => goHub(r.hub), limit: 50, search: true, maxHeight: '480px',
+          cols: [{ key: 'nome', label: 'Hub', render: r => h('b', null, r.nome) }, { key: 'n', label: 'Órfãos', num: 1, fmt: F.n0 }, { key: 'nDias', label: 'Dias', num: 1, fmt: F.n0 },
+            { key: 'real', label: 'Realoc. %', num: 1, val: r => r.real / r.n * 100, fmt: F.pct0 }, { key: 'nr', label: 'Não rot. %', num: 1, val: r => r.nr / r.n * 100, fmt: F.pct0 },
+            { key: 'bulky', label: 'Bulky %', num: 1, val: r => r.bulky / r.n * 100, fmt: F.pct0 }, { key: 'vol', label: 'Litros', num: 1, fmt: F.n0 }] }),
+        table({ title: 'Clusters', exportName: 'rofi_orfaos_clusters', rows: O.clusters, sort: ['n', -1], limit: 50, search: true, maxHeight: '480px',
+          cols: [{ key: 'nome', label: 'Hub' }, { key: 'cluster', label: 'Cluster', render: r => h('b', null, r.cluster) }, { key: 'n', label: 'Órfãos', num: 1, fmt: F.n0 }, { key: 'nDias', label: 'Dias', num: 1, fmt: F.n0 },
+            { key: 'nr', label: 'Não rot. %', num: 1, val: r => r.nr / r.n * 100, fmt: F.pct0 }, { key: 'bulky', label: 'Bulky %', num: 1, val: r => r.bulky / r.n * 100, fmt: F.pct0 }, { key: 'vol', label: 'Litros', num: 1, fmt: F.n0 }] })));
+      main.append(card('Por ciclo', null, chartBox(el => barList(el, { items: O.ciclos.map(c => ({ label: c.key, value: c.n, c })), tipRows: it => [{ label: 'Pedidos', value: F.n0(it.c.n) }, { label: 'Não rot.', value: F.pct(it.c.nr / it.c.n * 100) }] }))));
+      main.append(h('div', { style: { height: '14px' } }));
+    }
+    // do ROFI
+    const m = new Map(); for (const o of L) for (const [nm, n] of Core.parseClusters(o.orfClusters)) { const k = o.hub + '|' + nm; let e = m.get(k); if (!e) m.set(k, e = { hub: o.hub, nome: o.hubShort, cluster: nm, n: 0, vezes: 0 }); e.n += n; e.vezes++; }
+    main.append(h('div', { class: 'grid g2' },
+      card('Órfãos iniciais por dia (ROFI)', `${F.pct(A.orfPct)} dos pedidos planejados`, chartBox(el => { const d = Core.daily(L); lineChart(el, { x: d.map(x => x.key), height: 220, zero: true, series: [{ name: 'Órfãos iniciais', color: color(0), values: d.map(x => x.orfIni) }, { name: 'Bulky', color: color(1), values: d.map(x => x.orfBulky) }] }); })),
+      table({ title: 'Clusters ofensores citados no ROFI', exportName: 'rofi_clusters_ofensores', rows: [...m.values()], sort: ['n', -1], onRow: r => goHub(r.hub), limit: 30, search: true, maxHeight: '420px',
+        cols: [{ key: 'nome', label: 'Hub' }, { key: 'cluster', label: 'Cluster', render: r => h('b', null, r.cluster) }, { key: 'n', label: 'Órfãos', num: 1, fmt: F.n0 }, { key: 'vezes', label: 'Roteirizações', num: 1, fmt: F.n0 }] })));
+  };
+
+  // QUALIDADE
+  VIEWS.qualidade = () => {
+    const Q = D.qual();
+    main.append(h('h2', null, 'Qualidade do ROFI'), h('p', { class: 'lead' }, `Problemas de preenchimento encontrados nas roteirizações de ${periodTxt()} (inclui NOK, EXTRA e linhas repetidas). Clique numa regra para ver as linhas.`));
+    main.append(h('div', { class: 'tiles' },
+      tile('Roteirizações verificadas', F.n0(Q.total), null), tile('Com algum problema', F.n0(Q.comErro), F.pct(Q.comErro / Q.total * 100) + ' do total'),
+      tile('Versão de referência do Fluxo', S.model.latestVersion || '—', 'mais nova em uso nos últimos 3 dias')));
+    const grid = h('div', { class: 'rules' });
+    for (const r of Q.rules) {
+      grid.append(h('div', { class: 'rule' + (S.ruleSel === r.id ? ' sel' : ''), onclick: () => { S.ruleSel = S.ruleSel === r.id ? null : r.id; route(); } },
+        h('div', { class: 'top' }, h('span', { class: 'lbl' }, r.label), sevBadge(r.sev)),
+        h('div', { class: 'top' }, h('span', { class: 'n' }, F.n0(r.rows.length)), h('span', { class: 'muted' }, F.pct(r.rows.length / Q.total * 100))),
+        h('div', { class: 'ds' }, r.desc)));
+    }
+    main.append(grid);
+    const sel = Q.rules.filter(r => !S.ruleSel || r.id === S.ruleSel);
+    const linhas = sel.flatMap(r => r.rows.map(x => ({ ...x, regra: r.label, sev: r.sev })));
+    main.append(h('div', { class: 'grid', style: { gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', marginBottom: '14px' } },
+      table({ title: S.ruleSel ? Q.rules.find(r => r.id === S.ruleSel).label : 'Todas as ocorrências', search: true, exportName: 'rofi_erros' + (S.ruleSel ? '_' + S.ruleSel : ''), rows: linhas, sort: ['date', -1], limit: 150, maxHeight: '560px',
+        extra: S.ruleSel ? h('button', { class: 'btn small', onclick: () => { S.ruleSel = null; route(); } }, 'Ver todas') : null,
+        cols: [
+          { key: 'date', label: 'Data', val: r => r.o.date || r.o.dp, fmt: F.dateY }, { key: 'hub', label: 'Hub', val: r => r.o.hubShort || r.o.hubNome || r.o.hub },
+          { key: 'analista', label: 'Analista', val: r => (r.o.analista || '').replace(/@.*/, '') }, { key: 'ciclo', label: 'Ciclo', val: r => r.o.cicloRaw },
+          { key: 'regra', label: 'Problema' }, { key: 'detalhe', label: 'Detalhe', wrap: 1 },
+          { key: 'linha', label: 'Linha', num: 1, val: r => r.o._line, title: 'Linha na aba ROFI_3.0' }, { key: 'id', label: 'ID', val: r => r.o.id },
+        ] }),
+      table({ title: 'Por analista', search: true, exportName: 'rofi_erros_analistas', rows: Q.analysts.filter(a => a.erros), sort: ['opsComErro', -1], limit: 100, maxHeight: '560px',
+        onRow: r => { S.f.analista = r.analista; refresh(); },
+        cols: [{ key: 'analista', label: 'Analista', val: r => r.analista.replace(/@.*/, '') }, { key: 'ops', label: 'Rots.', num: 1, fmt: F.n0 }, { key: 'opsComErro', label: 'Com erro', num: 1, fmt: F.n0 }, { key: 'pct', label: '%', num: 1, fmt: F.pct0 },
+          { key: 'top', label: 'Mais comum', val: r => { const e = Object.entries(r.porRegra).sort((a, b) => b[1] - a[1])[0]; return e ? Q.rules.find(x => x.id === e[0]).label : ''; } }] })));
+    main.append(h('p', { class: 'note' }, 'Clique num analista para filtrar o app inteiro por ele. Linhas marcadas como reprocessadas ou com ID duplicado ficam fora das demais análises.'));
+  };
+
+  // ANALISTAS
+  VIEWS.analistas = () => {
+    const rows = D.analysts(); const L = D.list();
+    main.append(h('h2', null, 'Analistas'), h('p', { class: 'lead' }, `Volume, tempo e qualidade por analista em ${periodTxt()}. Tempos acima de 180 min ficam fora da média.`));
+    const vers = Core.countBy(L.filter(o => o.dp && o.dp >= Core.addDays(S.model.today, -3)), o => o.versao);
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      card('Tempo médio de roteirização', 'analistas com 5+ roteirizações · minutos', chartBox(el => barList(el, { items: rows.filter(r => r.n >= 5 && r.tempoMed).sort((a, b) => b.tempoMed - a.tempoMed).map(r => ({ label: r.analista.replace(/@.*/, ''), value: r.tempoMed, r })), fmt: F.n0, limit: 15, tipRows: it => [{ label: 'Tempo médio', value: F.n0(it.r.tempoMed) + ' min' }, { label: 'Roteirizações', value: F.n0(it.r.n) }] }))),
+      card('Versões do Fluxo em uso', 'roteirizações processadas nos últimos 3 dias', chartBox(el => barList(el, { items: vers.map(v => ({ label: v.key, value: v.n, color: v.key === S.model.latestVersion ? 'var(--s1)' : 'var(--s2)' })), limit: 10 })))));
+    main.append(table({ title: 'Por analista', search: true, exportName: 'rofi_analistas', rows, sort: ['n', -1], limit: 300, onRow: r => { S.f.analista = r.analista; refresh(); },
+      cols: [{ key: 'analista', label: 'Analista', val: r => r.analista.replace(/@.*/, '') }, { key: 'n', label: 'Rots.', num: 1, fmt: F.n0 }, { key: 'dias', label: 'Dias', num: 1, fmt: F.n0 }, { key: 'opsDia', label: 'Rots./dia', num: 1, fmt: F.n1 },
+        { key: 'hubs', label: 'Hubs', num: 1, fmt: F.n0 }, { key: 'pedidos', label: 'Pedidos', num: 1, fmt: F.n0 }, { key: 'tempoMed', label: 'Tempo médio', num: 1, fmt: F.n0 }, { key: 'tempoMediana', label: 'Mediana', num: 1, fmt: F.n0 },
+        { key: 'sprPas', label: 'SPR passeio', num: 1, fmt: F.n1 }, { key: 'justPct', label: 'Justif. %', num: 1, fmt: F.pct0 }, { key: 'errosPct', label: 'Com erro %', num: 1, fmt: F.pct0 },
+        { key: 'ultVersao', label: 'Última versão', render: r => r.desatualizado ? h('span', { class: 'badge' }, h('i', { style: { background: 'var(--warn)' } }), r.ultVersao) : r.ultVersao, csv: r => r.ultVersao },
+        { key: 'ultimaData', label: 'Último proc.', fmt: F.dateY }] }));
+  };
+
+  // SUPORTE
+  VIEWS.suporte = () => {
+    const U = D.sup();
+    main.append(h('h2', null, 'Suporte'), h('p', { class: 'lead' }, `Conferências registradas na aba Suporte em ${periodTxt()}.`));
+    if (!U) { main.append(h('div', { class: 'empty' }, 'O arquivo não tem a aba Suporte.')); return; }
+    const sit = k => (U.sit.find(x => x.key === k) || { n: 0 }).n;
+    main.append(h('div', { class: 'tiles' }, tile('Registros', F.n0(U.n), null), tile('OK', F.n0(sit('OK')), null), tile('Divergência', F.n0(sit('DIVERGÊNCIA')), null), tile('Aguardando', F.n0(sit('AGUARDANDO')), null), tile('Fora do padrão (parâmetros)', F.n0((U.par.find(x => x.key === 'Fora do padrão') || { n: 0 }).n), null)));
+    main.append(h('div', { class: 'grid g3', style: { marginBottom: '14px' } },
+      card('Situação', null, chartBox(el => barList(el, { items: U.sit.map(x => ({ label: x.key, value: x.n })) }))),
+      card('Parâmetros', null, chartBox(el => barList(el, { items: U.par.map(x => ({ label: x.key, value: x.n })) }))),
+      card('Versão', null, chartBox(el => barList(el, { items: U.versao.map(x => ({ label: x.key, value: x.n })), limit: 8 })))));
+    main.append(h('div', { class: 'grid g2', style: { marginBottom: '14px' } },
+      table({ title: 'Hubs', search: true, exportName: 'rofi_suporte_hubs', rows: U.hubs, sort: ['div', -1], limit: 50, maxHeight: '460px',
+        cols: [{ key: 'nome', label: 'Hub', render: r => h('b', null, r.nome) }, { key: 'n', label: 'Registros', num: 1, fmt: F.n0 }, { key: 'div', label: 'Divergência', num: 1, fmt: F.n0 }, { key: 'fora', label: 'Fora do padrão', num: 1, fmt: F.n0 }, { key: 'agu', label: 'Aguardando', num: 1, fmt: F.n0 }] }),
+      table({ title: 'Analistas', search: true, exportName: 'rofi_suporte_analistas', rows: U.analistas, sort: ['n', -1], limit: 50, maxHeight: '460px',
+        cols: [{ key: 'key', label: 'Analista', val: r => r.key.replace(/@.*/, '') }, { key: 'n', label: 'Registros', num: 1, fmt: F.n0 }] })));
+    main.append(table({ title: 'Divergências e parâmetros fora do padrão', search: true, exportName: 'rofi_suporte_divergencias', rows: U.divergencias, sort: ['quando', -1], limit: 100,
+      cols: [{ key: 'quando', label: 'Quando', sortVal: r => (r.quandoIso || '') + r.quando }, { key: 'hubShort', label: 'Hub' }, { key: 'ciclo', label: 'Ciclo' }, { key: 'date', label: 'Data', fmt: F.dateY },
+        { key: 'analista', label: 'Analista', val: r => r.analista.replace(/@.*/, '') }, { key: 'versao', label: 'Versão' }, { key: 'cts', label: 'CTs', num: 1, fmt: F.n0 }, { key: 'sit', label: 'Situação' }, { key: 'par', label: 'Parâmetros', wrap: 1, clip: 160 }, { key: 'det', label: 'Detalhes', wrap: 1, clip: 260 }] }));
+  };
+
+  // ---------- início ----------
+  renderDrop();
+  window.__rofi = { S, D, load, resumoTexto, loadSheets, ofensoresTexto };
+})();
+</script>
+</body>
+</html>
