@@ -1,0 +1,2 @@
+# rofi-analisador
+Analisador Rofi
